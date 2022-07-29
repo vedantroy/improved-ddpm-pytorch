@@ -4,8 +4,8 @@ from einops import rearrange
 import math
 
 # TODO: Re-implement these
-from losses import discretized_gaussian_log_likelihood, normal_kl
-from nn import mean_flat
+from .losses import discretized_gaussian_log_likelihood, normal_kl
+from .nn import mean_flat
 
 # Simple-ish Gaussian Diffusion
 # Notes:

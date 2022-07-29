@@ -1,0 +1,124 @@
+
+====IN====
+
+Start Skip Connection:
+  Conv2d(in=3, out=128)
+
+====DOWN====
+
+  Start Skip Connection:
+      ResBlock(in=128, out=128, emb_channels=512)
+  Start Skip Connection:
+      ResBlock(in=128, out=128, emb_channels=512)
+  Start Skip Connection:
+      ResBlock(in=128, out=128, emb_channels=512)
+  Start Skip Connection:
+    Downsample(in=128)
+
+  Start Skip Connection:
+      ResBlock(in=256, out=256, emb_channels=512)
+  Start Skip Connection:
+      ResBlock(in=256, out=256, emb_channels=512)
+  Start Skip Connection:
+      ResBlock(in=256, out=256, emb_channels=512)
+  Start Skip Connection:
+    Downsample(in=256)
+
+  Start Skip Connection:
+      ResBlock(in=384, out=384, emb_channels=512)
+      Residual:
+        AttentionBlock(in=384, heads=4)
+  Start Skip Connection:
+      ResBlock(in=384, out=384, emb_channels=512)
+      Residual:
+        AttentionBlock(in=384, heads=4)
+  Start Skip Connection:
+      ResBlock(in=384, out=384, emb_channels=512)
+      Residual:
+        AttentionBlock(in=384, heads=4)
+  Start Skip Connection:
+    Downsample(in=384)
+
+  Start Skip Connection:
+      ResBlock(in=512, out=512, emb_channels=512)
+      Residual:
+        AttentionBlock(in=512, heads=4)
+  Start Skip Connection:
+      ResBlock(in=512, out=512, emb_channels=512)
+      Residual:
+        AttentionBlock(in=512, heads=4)
+  Start Skip Connection:
+      ResBlock(in=512, out=512, emb_channels=512)
+      Residual:
+        AttentionBlock(in=512, heads=4)
+
+
+====MIDDLE====
+
+  ResBlock(in=512, out=512, emb_channels=512)
+  AttentionBlock(in=512, heads=4)
+  ResBlock(in=512, out=512, emb_channels=512)
+
+====UP====
+
+  End Skip Connection (channels=512):
+    ResBlock(in=1024, out=512, emb_channels=512)
+  Residual:
+    AttentionBlock(in=512, heads=4)
+  End Skip Connection (channels=512):
+    ResBlock(in=1024, out=512, emb_channels=512)
+  Residual:
+    AttentionBlock(in=512, heads=4)
+  End Skip Connection (channels=512):
+    ResBlock(in=1024, out=512, emb_channels=512)
+  Residual:
+    AttentionBlock(in=512, heads=4)
+  End Skip Connection (channels=384):
+    ResBlock(in=896, out=512, emb_channels=512)
+  Residual:
+    AttentionBlock(in=512, heads=4)
+  Upsample(in=512)
+
+  End Skip Connection (channels=384):
+    ResBlock(in=896, out=384, emb_channels=512)
+  Residual:
+    AttentionBlock(in=384, heads=4)
+  End Skip Connection (channels=384):
+    ResBlock(in=768, out=384, emb_channels=512)
+  Residual:
+    AttentionBlock(in=384, heads=4)
+  End Skip Connection (channels=384):
+    ResBlock(in=768, out=384, emb_channels=512)
+  Residual:
+    AttentionBlock(in=384, heads=4)
+  End Skip Connection (channels=256):
+    ResBlock(in=640, out=384, emb_channels=512)
+  Residual:
+    AttentionBlock(in=384, heads=4)
+  Upsample(in=384)
+
+  End Skip Connection (channels=256):
+    ResBlock(in=640, out=256, emb_channels=512)
+  End Skip Connection (channels=256):
+    ResBlock(in=512, out=256, emb_channels=512)
+  End Skip Connection (channels=256):
+    ResBlock(in=512, out=256, emb_channels=512)
+  End Skip Connection (channels=128):
+    ResBlock(in=384, out=256, emb_channels=512)
+  Upsample(in=256)
+
+  End Skip Connection (channels=128):
+    ResBlock(in=384, out=128, emb_channels=512)
+  End Skip Connection (channels=128):
+    ResBlock(in=256, out=128, emb_channels=512)
+  End Skip Connection (channels=128):
+    ResBlock(in=256, out=128, emb_channels=512)
+  End Skip Connection (channels=128):
+    ResBlock(in=256, out=128, emb_channels=512)
+
+
+====OUT====
+
+  GroupNorm
+  SiLU
+  Conv2d(in=128, out=3)

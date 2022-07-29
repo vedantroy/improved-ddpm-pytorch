@@ -1,3 +1,9 @@
+"""
+Simple script to
+1. Initialize the UNet
+2. Pass a sample input through the UNet
+To verify nothing is obviously broken
+"""
 import torch as th
 
 from unet.unet import UNet
