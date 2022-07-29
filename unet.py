@@ -222,7 +222,7 @@ class Downsample(nn.Module):
 class UNet(nn.Module):
     def __init__(
         self,
-        prev_layer_channels,
+        in_channels,
         out_channels,
         model_channels,
         channel_mult,
@@ -248,7 +248,7 @@ class UNet(nn.Module):
         self.skips = []
         skip_connection_channels = []
 
-        self.in_conv = AddSkipConnection(nn.Conv2d(prev_layer_channels, model_channels, kernel_size=3, padding=1), self.skips)
+        self.in_conv = AddSkipConnection(nn.Conv2d(in_channels, model_channels, kernel_size=3, padding=1), self.skips)
         skip_connection_channels.append(model_channels)
 
         self.downs = nn.ModuleList([])
@@ -256,22 +256,22 @@ class UNet(nn.Module):
 
         for level, mult in enumerate(channel_mult):
             is_bottom_level = level == 0
-            prev_layer_channels = model_channels if is_bottom_level else model_channels * mult
-            out_channels = model_channels * channel_mult[level]
+            cur_in_channels = model_channels if is_bottom_level else model_channels * mult
+            cur_out_channels = model_channels * channel_mult[level]
             use_attn = layer_attn[level]
             is_last_layer_before_middle = level == len(channel_mult) - 1
 
             down = []
             for _ in range(num_res_blocks):
-                blocks = [ResNetBlock(prev_layer_channels, out_channels, time_emb_dim)]
+                blocks = [ResNetBlock(cur_in_channels, cur_out_channels, time_emb_dim)]
                 if use_attn:
-                    blocks.append(Residual(AttentionBlock(out_channels, num_heads)))
+                    blocks.append(Residual(AttentionBlock(cur_out_channels, num_heads)))
                 down.append(AddSkipConnection(TimestepEmbedSequential(*blocks), self.skips))
-                skip_connection_channels.append(out_channels)
+                skip_connection_channels.append(cur_out_channels)
             add_downsample = not is_last_layer_before_middle
             if add_downsample:
-                down.append(AddSkipConnection(Downsample(out_channels), self.skips))
-                skip_connection_channels.append(out_channels)
+                down.append(AddSkipConnection(Downsample(cur_out_channels), self.skips))
+                skip_connection_channels.append(cur_out_channels)
             self.downs.append(TimestepEmbedSequential(*down))
 
         middle_channels = model_channels * channel_mult[-1]
