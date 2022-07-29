@@ -32,7 +32,7 @@ class UNet(nn.Module):
         ), "each layer must specify whether it uses attention between residual blocks"
         self.num_res_blocks = num_res_blocks
         self.model_channels = model_channels
-        self.num_layers = len(channel_mult)
+        self.num_levels = len(channel_mult)
 
         time_emb_dim = model_channels * 4
         self.time_embed = nn.Sequential(
