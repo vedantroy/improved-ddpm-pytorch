@@ -263,9 +263,8 @@ class UNet(nn.Module):
                 down = [AddSkipConnection(TimestepEmbedSequential(down), self.skips)]
             add_downsample = not is_last_layer_before_middle
             if add_downsample:
-                down.append(Downsample(out_channels))
-            skip_klass = AddSkipConnection if add_downsample else lambda x, **kwargs: x
-            self.downs.append(skip_klass(TimestepEmbedSequential(*down)))
+                down.append(AddSkipConnection(Downsample(out_channels), self.skips))
+            self.downs.append(TimestepEmbedSequential(*down))
 
         middle_channels = model_channels * channel_mult[-1]
         self.middle = TimestepEmbedSequential(
