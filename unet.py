@@ -92,6 +92,7 @@ class AddSkipConnection(TimestepBlock):
         self.skips.append(y)
         return y
 
+
 class TakeFromSkipConnection(nn.Module):
     def __init__(self, fn, skips, expected_channels):
         super().__init__()
@@ -123,6 +124,8 @@ class QKVAttention(nn.Module):
 class AttentionBlock(nn.Module):
     def __init__(self, channels, num_heads):
         super().__init__()
+        self.channels = channels
+        self.num_heads = num_heads
         self.layers = nn.Sequential(
             Rearrange("b c h w -> b c (h w)"),
             normalization(channels),
@@ -141,6 +144,7 @@ class AttentionBlock(nn.Module):
 class ResNetBlock(TimestepBlock):
     def __init__(self, in_channels: int, out_channels: int, time_emb_channels: int):
         super().__init__()
+        self.in_channels = in_channels
         self.out_channels = out_channels
 
         self.in_layers = nn.Sequential(
@@ -259,7 +263,7 @@ class UNet(nn.Module):
             for _ in range(num_res_blocks):
                 down.append(ResNetBlock(in_channels, out_channels, time_emb_dim))
                 if use_attn:
-                    down.append(AttentionBlock(out_channels, num_heads))
+                    down.append(Residual(AttentionBlock(out_channels, num_heads)))
                 down = [AddSkipConnection(TimestepEmbedSequential(down), self.skips)]
             add_downsample = not is_last_layer_before_middle
             if add_downsample:
@@ -292,7 +296,7 @@ class UNet(nn.Module):
                     )
                 )
                 if use_attn:
-                    up.append(AttentionBlock(out_channels, num_heads), self.skips)
+                    up.append(Residual(AttentionBlock(out_channels, num_heads)))
             if not is_top_level:
                 up.append(Upsample(out_channels))
             self.ups.append(TimestepEmbedSequential(*up))
@@ -300,7 +304,9 @@ class UNet(nn.Module):
         self.out_layers = nn.Sequential(
             normalization(model_channels),
             nn.SiLU(),
-            zero_module(nn.Conv2d(model_channels, out_channels, kernel_size=3, padding=1)),
+            zero_module(
+                nn.Conv2d(model_channels, out_channels, kernel_size=3, padding=1)
+            ),
         )
 
     def _print(self, s, indent):
@@ -311,7 +317,9 @@ class UNet(nn.Module):
             self._print_layer(l.fn, indent)
             self._print("=> store in skip connection", indent)
         elif isinstance(l, TakeFromSkipConnection):
-            self._print(f"=> take from skip connection (channels={l.expected_channels})", indent)
+            self._print(
+                f"=> take from skip connection (channels={l.expected_channels})", indent
+            )
             self._print_layer(l.fn, indent + 2)
         elif isinstance(l, TimestepEmbedSequential):
             for l2 in l:
@@ -321,10 +329,12 @@ class UNet(nn.Module):
                 self._print_layer(l2, indent + 2)
         elif isinstance(l, nn.ModuleList):
             for l2 in l:
+                print("")
                 self._print_layer(l2, indent + 2)
         elif isinstance(l, ResNetBlock):
             self._print(
-                f"ResBlock(in={l.channels}, out={l.out_channels}, emb_channels={l.emb_channels})", indent
+                f"ResBlock(in={l.in_channels}, out={l.out_channels}, emb_channels={l.emb_channels})",
+                indent,
             )
         elif isinstance(l, AttentionBlock):
             self._print(f"AttentionBlock(in={l.channels}, heads={l.num_heads})", indent)
@@ -349,7 +359,9 @@ class UNet(nn.Module):
         self._print_layer(self.out_layers)
 
     def assert_no_skips_left(self):
-            assert len(self.skips) == 0, f"skips should be empty, but has {len(self.skips)} unused skip connections"
+        assert (
+            len(self.skips) == 0
+        ), f"skips should be empty, but has {len(self.skips)} unused skip connections"
 
     def forward(self, x, timesteps):
         # TODO: The skip connections are hidden
@@ -366,7 +378,9 @@ class UNet(nn.Module):
             x = down(x, emb)
 
         expected_skips = self.num_res_blocks * self.num_layers
-        assert len(self.skips) == expected_skips, f"skips should have {expected_skips} skip connections, but has {len(self.skips)}"
+        assert (
+            len(self.skips) == expected_skips
+        ), f"skips should have {expected_skips} skip connections, but has {len(self.skips)}"
 
         x = self.middle(x, emb)
 

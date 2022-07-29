@@ -42,6 +42,7 @@ def cosine_betas(timesteps, s=0.008, max_beta=0.999):
     # TODO: In practice, this clamp just seems to clip the last value from 1 to 0.999
     return betas.clamp(0, max_beta)
 
+
 def for_timesteps(a, t, broadcast_shape):
     """
     Extract values from a for each timestep
@@ -65,8 +66,10 @@ def for_timesteps(a, t, broadcast_shape):
     num_nonbatch_dims = len(broadcast_shape) - 1
     return out.reshape(b, *((1,) * num_nonbatch_dims))
 
+
 def f32(x):
     return x.to(th.float32)
+
 
 class GaussianDiffusion:
     def __init__(self, betas):
@@ -83,26 +86,28 @@ class GaussianDiffusion:
 
         def setup_q_posterior_mean():
             # (11 in [0])
-            self.posterior_mean_coef_x_0 = f32((th.sqrt(alphas_cumprod_prev) * betas) / (
-                1 - alphas_cumprod
-            ))
+            self.posterior_mean_coef_x_0 = f32(
+                (th.sqrt(alphas_cumprod_prev) * betas) / (1 - alphas_cumprod)
+            )
             check(self.posterior_mean_coef_x_0)
-            self.posterior_mean_coef_x_t = f32((th.sqrt(alphas) * (1 - alphas_cumprod_prev)) / (
-                1 - alphas_cumprod
-            ))
+            self.posterior_mean_coef_x_t = f32(
+                (th.sqrt(alphas) * (1 - alphas_cumprod_prev)) / (1 - alphas_cumprod)
+            )
             check(self.posterior_mean_coef_x_t)
 
         def setup_q_posterior_log_variance():
             # (10 in [0])
-            posterior_variance = f32((
-                (1 - alphas_cumprod_prev) / (1 - alphas_cumprod)
-            ) * betas)
+            posterior_variance = f32(
+                ((1 - alphas_cumprod_prev) / (1 - alphas_cumprod)) * betas
+            )
             # clipped to avoid log(0) == -inf b/c posterior variance is 0
             # at start of diffusion chain
             assert alphas_cumprod_prev[0] == 1 and posterior_variance[0] == 0
-            self.posterior_log_variance_clipped = f32(th.log(
-                F.pad(posterior_variance[1:], (1, 0), value=posterior_variance[1])
-            ))
+            self.posterior_log_variance_clipped = f32(
+                th.log(
+                    F.pad(posterior_variance[1:], (1, 0), value=posterior_variance[1])
+                )
+            )
             check(self.posterior_log_variance_clipped)
 
         def setup_q_sample():
@@ -118,7 +123,9 @@ class GaussianDiffusion:
             # which is same as this, since: sqrt(1/a) = 1/sqrt(a)
             self.recip_sqrt_alphas_cumprod = f32(1.0 / th.sqrt(alphas_cumprod))
             check(self.recip_sqrt_alphas_cumprod)
-            self.sqrt_recip_alphas_cumprod_minus1 = f32(th.sqrt((1 / alphas_cumprod) - 1))
+            self.sqrt_recip_alphas_cumprod_minus1 = f32(
+                th.sqrt((1 / alphas_cumprod) - 1)
+            )
             check(self.sqrt_recip_alphas_cumprod_minus1)
 
         setup_q_sample()
@@ -129,7 +136,6 @@ class GaussianDiffusion:
         # Used to calculate the variance from the model prediction
         self.log_betas = f32(th.log(betas))
         check(self.log_betas)
-
 
     # (12) in [0]
     def q_posterior_mean(self, x_start, x_t, t):
@@ -243,8 +249,10 @@ class GaussianDiffusion:
         )
         mse_loss = mean_flat((noise - model_eps) ** 2)
 
-        true_mean  = self.q_posterior_mean(x_0, x_t, t)
-        true_log_var_clipped = for_timesteps(self.posterior_log_variance_clipped, t, x_t.shape)
+        true_mean = self.q_posterior_mean(x_0, x_t, t)
+        true_log_var_clipped = for_timesteps(
+            self.posterior_log_variance_clipped, t, x_t.shape
+        )
 
         pred_mean, pred_log_var = self.p_mean_variance(
             x_t, t, model_v, model_eps, threshold=False

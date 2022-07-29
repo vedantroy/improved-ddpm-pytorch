@@ -1,6 +1,7 @@
 # This was taken from the OpenAI repository
 # I plan to reimplement this later when I have more time
 
+
 def mean_flat(tensor):
     """
     Take the mean over all non-batch dimensions.
