@@ -282,7 +282,7 @@ class UNet(nn.Module):
             in_channels = channel_mult[-1]
             out_channels = model_channels * mult
             skip_channels = skip_connection_channels.pop()
-            use_attn = layer_attn[len(channel_mult) - level]
+            use_attn = layer_attn[len(channel_mult) - level - 1]
 
             up = []
             for _ in range(num_res_blocks + 1):
