@@ -1,6 +1,6 @@
 import torch as th
 
-from unet import UNet
+from unet.unet import UNet
 
 unet = UNet(
     in_channels=3,
