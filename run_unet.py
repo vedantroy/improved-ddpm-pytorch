@@ -10,4 +10,5 @@ unet = UNet(
     num_heads=4,
 )
 unet = unet.cuda()
+unet.print_architecture()
 

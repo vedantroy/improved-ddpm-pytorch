@@ -264,7 +264,7 @@ class UNet(nn.Module):
                 down.append(ResNetBlock(in_channels, out_channels, time_emb_dim))
                 if use_attn:
                     down.append(Residual(AttentionBlock(out_channels, num_heads)))
-                down = [AddSkipConnection(TimestepEmbedSequential(down), self.skips)]
+                down = [AddSkipConnection(TimestepEmbedSequential(*down), self.skips)]
             add_downsample = not is_last_layer_before_middle
             if add_downsample:
                 down.append(AddSkipConnection(Downsample(out_channels), self.skips))
