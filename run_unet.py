@@ -1,3 +1,5 @@
+import torch as th
+
 from unet import UNet
 
 unet = UNet(
@@ -12,3 +14,13 @@ unet = UNet(
 unet = unet.cuda()
 unet.print_architecture()
 
+batch_size = 2
+# This was an actual input
+timesteps = th.tensor([472.2500, 217.5000]).cuda()
+assert timesteps.shape[0] == batch_size
+# This is obviously not
+x = th.randn((batch_size, 3, 64, 64)).cuda()
+
+unet.eval()
+out = unet(x, timesteps)
+assert out.shape == x.shape

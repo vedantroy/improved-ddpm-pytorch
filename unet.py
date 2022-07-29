@@ -87,13 +87,18 @@ class AddSkipConnection(TimestepBlock):
         self.fn = fn
         self.skips = skips
 
-    def forward(self, x, emb, **kwargs):
-        y = self.fn(x, emb, **kwargs)
+    def forward(self, x, emb=None, **kwargs):
+        y = None
+        if isinstance(self.fn, TimestepBlock):
+            assert emb != None, "Missing embedding"
+            y = self.fn(x, emb, **kwargs)
+        else:
+            y = self.fn(x, **kwargs)
         self.skips.append(y)
         return y
 
 
-class TakeFromSkipConnection(nn.Module):
+class TakeFromSkipConnection(TimestepBlock):
     def __init__(self, fn, skips, expected_channels):
         super().__init__()
         self.fn = fn
@@ -248,7 +253,9 @@ class UNet(nn.Module):
         self.skips = []
         skip_connection_channels = []
 
-        self.in_conv = AddSkipConnection(nn.Conv2d(in_channels, model_channels, kernel_size=3, padding=1), self.skips)
+        self.in_conv = AddSkipConnection(
+            nn.Conv2d(in_channels, model_channels, kernel_size=3, padding=1), self.skips
+        )
         skip_connection_channels.append(model_channels)
 
         self.downs = nn.ModuleList([])
@@ -256,17 +263,26 @@ class UNet(nn.Module):
 
         for level, mult in enumerate(channel_mult):
             is_bottom_level = level == 0
-            cur_in_channels = model_channels if is_bottom_level else model_channels * mult
+            prev_layer_out_channels = (
+                model_channels
+                if is_bottom_level
+                else model_channels * channel_mult[level - 1]
+            )
             cur_out_channels = model_channels * channel_mult[level]
             use_attn = layer_attn[level]
             is_last_layer_before_middle = level == len(channel_mult) - 1
 
             down = []
-            for _ in range(num_res_blocks):
+            for idx in range(num_res_blocks):
+                cur_in_channels = (
+                    prev_layer_out_channels if idx == 0 else cur_out_channels
+                )
                 blocks = [ResNetBlock(cur_in_channels, cur_out_channels, time_emb_dim)]
                 if use_attn:
                     blocks.append(Residual(AttentionBlock(cur_out_channels, num_heads)))
-                down.append(AddSkipConnection(TimestepEmbedSequential(*blocks), self.skips))
+                down.append(
+                    AddSkipConnection(TimestepEmbedSequential(*blocks), self.skips)
+                )
                 skip_connection_channels.append(cur_out_channels)
             add_downsample = not is_last_layer_before_middle
             if add_downsample:
@@ -282,20 +298,30 @@ class UNet(nn.Module):
         )
 
         backwards_channel_mult = list(reversed(channel_mult))
-        for level, (mult, use_attn) in enumerate(zip(backwards_channel_mult, layer_attn[::-1])):
+        for level, (mult, use_attn) in enumerate(
+            zip(backwards_channel_mult, layer_attn[::-1])
+        ):
             is_bottom_level = level == 0
             is_top_level = level == len(channel_mult) - 1
-            prev_layer_channels = middle_channels if is_bottom_level else model_channels * backwards_channel_mult[level - 1]
+            prev_layer_channels = (
+                middle_channels
+                if is_bottom_level
+                else model_channels * backwards_channel_mult[level - 1]
+            )
             cur_out_channels = model_channels * mult
 
             up = []
             for idx in range(num_res_blocks + 1):
                 skip_channels = skip_connection_channels.pop()
-                res_block_in_channels = prev_layer_channels if idx == 0 else cur_out_channels
+                res_block_in_channels = (
+                    prev_layer_channels if idx == 0 else cur_out_channels
+                )
                 up.append(
                     TakeFromSkipConnection(
                         ResNetBlock(
-                            res_block_in_channels + skip_channels, cur_out_channels, time_emb_dim
+                            res_block_in_channels + skip_channels,
+                            cur_out_channels,
+                            time_emb_dim,
                         ),
                         skips=self.skips,
                         expected_channels=skip_channels,
@@ -381,7 +407,7 @@ class UNet(nn.Module):
     def forward(self, x, timesteps):
         # By using `AddSkipConnection` and `TakeFromSkipConnection`
         # the skip connections are hidden in the forward method, but
-        # the network code is more descriptive/declarative in __init__ 
+        # the network code is more descriptive/declarative in __init__
         # which is a net win
         self.assert_no_skips_left()
 
@@ -391,10 +417,9 @@ class UNet(nn.Module):
         for down in self.downs:
             x = down(x, emb)
 
-        expected_skips = self.num_res_blocks * self.num_layers
-        assert (
-            len(self.skips) == expected_skips
-        ), f"skips should have {expected_skips} skip connections, but has {len(self.skips)}"
+        #assert (
+        #    len(self.skips) == expected_skips
+        #), f"skips should have {expected_skips} skip connections, but has {len(self.skips)}"
 
         x = self.middle(x, emb)
 
@@ -402,4 +427,4 @@ class UNet(nn.Module):
             x = up(x, emb)
 
         self.assert_no_skips_left()
-        return self.out(x)
+        return self.out_layers(x)
