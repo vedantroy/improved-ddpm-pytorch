@@ -314,11 +314,11 @@ class UNet(nn.Module):
 
     def _print_layer(self, l, indent=0):
         if isinstance(l, AddSkipConnection):
-            self._print_layer(l.fn, indent)
-            self._print("=> store in skip connection", indent)
+            self._print("Store in skip connection:", indent)
+            self._print_layer(l.fn, indent + 2)
         elif isinstance(l, TakeFromSkipConnection):
             self._print(
-                f"=> take from skip connection (channels={l.expected_channels})", indent
+                f"Take from skip connection (channels={l.expected_channels}):", indent
             )
             self._print_layer(l.fn, indent + 2)
         elif isinstance(l, TimestepEmbedSequential):
@@ -329,8 +329,11 @@ class UNet(nn.Module):
                 self._print_layer(l2, indent + 2)
         elif isinstance(l, nn.ModuleList):
             for l2 in l:
-                print("")
                 self._print_layer(l2, indent + 2)
+                print("")
+        elif isinstance(l, Residual):
+            self._print("Residual:", indent)
+            self._print_layer(l.fn, indent + 2)
         elif isinstance(l, ResNetBlock):
             self._print(
                 f"ResBlock(in={l.in_channels}, out={l.out_channels}, emb_channels={l.emb_channels})",
