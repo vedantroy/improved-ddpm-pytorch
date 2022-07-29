@@ -303,6 +303,51 @@ class UNet(nn.Module):
             zero_module(nn.Conv2d(model_channels, out_channels, kernel_size=3, padding=1)),
         )
 
+    def _print(self, s, indent):
+        print(" " * indent + s)
+
+    def _print_layer(self, l, indent=0):
+        if isinstance(l, AddSkipConnection):
+            self._print_layer(l.fn, indent)
+            self._print("=> store in skip connection", indent)
+        elif isinstance(l, TakeFromSkipConnection):
+            self._print(f"=> take from skip connection (channels={l.expected_channels})", indent)
+            self._print_layer(l.fn, indent + 2)
+        elif isinstance(l, TimestepEmbedSequential):
+            for l2 in l:
+                self._print_layer(l2, indent + 2)
+        elif isinstance(l, nn.Sequential):
+            for l2 in l:
+                self._print_layer(l2, indent + 2)
+        elif isinstance(l, nn.ModuleList):
+            for l2 in l:
+                self._print_layer(l2, indent + 2)
+        elif isinstance(l, ResNetBlock):
+            self._print(
+                f"ResBlock(in={l.channels}, out={l.out_channels}, emb_channels={l.emb_channels})", indent
+            )
+        elif isinstance(l, AttentionBlock):
+            self._print(f"AttentionBlock(in={l.channels}, heads={l.num_heads})", indent)
+        elif isinstance(l, nn.Conv2d):
+            self._print(f"Conv2d(in={l.in_channels}, out={l.out_channels})")
+        elif isinstance(l, Downsample):
+            self._print(f"Downsample(in={l.channels})", indent)
+        elif isinstance(l, Upsample):
+            self._print(f"Upsample(in={l.channels})", indent)
+        elif isinstance(l, nn.SiLU):
+            self._print("SiLU", indent)
+        elif isinstance(l, nn.GroupNorm):
+            self._print("GroupNorm", indent)
+        else:
+            raise Exception(f"Unknown layer type: {type(l)}")
+
+    def print_architecture(self):
+        self._print_layer(self.in_conv)
+        self._print_layer(self.downs)
+        self._print_layer(self.middle)
+        self._print_layer(self.ups)
+        self._print_layer(self.out_layers)
+
     def assert_no_skips_left(self):
             assert len(self.skips) == 0, f"skips should be empty, but has {len(self.skips)} unused skip connections"
 
