@@ -286,25 +286,25 @@ class UNet(nn.Module):
             is_bottom_level = level == 0
             is_top_level = level == len(channel_mult) - 1
             prev_layer_channels = middle_channels if is_bottom_level else model_channels * backwards_channel_mult[level - 1]
-            out_channels = model_channels * mult
+            cur_out_channels = model_channels * mult
 
             up = []
             for idx in range(num_res_blocks + 1):
                 skip_channels = skip_connection_channels.pop()
-                res_block_in_channels = prev_layer_channels if idx == 0 else out_channels
+                res_block_in_channels = prev_layer_channels if idx == 0 else cur_out_channels
                 up.append(
                     TakeFromSkipConnection(
                         ResNetBlock(
-                            res_block_in_channels + skip_channels, out_channels, time_emb_dim
+                            res_block_in_channels + skip_channels, cur_out_channels, time_emb_dim
                         ),
                         skips=self.skips,
                         expected_channels=skip_channels,
                     )
                 )
                 if use_attn:
-                    up.append(Residual(AttentionBlock(out_channels, num_heads)))
+                    up.append(Residual(AttentionBlock(cur_out_channels, num_heads)))
             if not is_top_level:
-                up.append(Upsample(out_channels))
+                up.append(Upsample(cur_out_channels))
             self.ups.append(TimestepEmbedSequential(*up))
 
         self.out_layers = nn.Sequential(
