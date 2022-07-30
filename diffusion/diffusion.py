@@ -43,7 +43,7 @@ def cosine_betas(timesteps, s=0.008, max_beta=0.999):
     return betas.clamp(0, max_beta)
 
 
-def for_timesteps(a, t, broadcast_shape):
+def for_timesteps(a, t, broadcast_to):
     """
     Extract values from a for each timestep
 
@@ -62,8 +62,8 @@ def for_timesteps(a, t, broadcast_shape):
 
     # use `t` as an index tensor to extract values
     # at a given timestep
-    out = a.gather(0, t)
-    num_nonbatch_dims = len(broadcast_shape) - 1
+    out = a.to(device=broadcast_to.device).gather(0, t)
+    num_nonbatch_dims = len(broadcast_to.shape) - 1
     return out.reshape(b, *((1,) * num_nonbatch_dims))
 
 
@@ -151,8 +151,8 @@ class GaussianDiffusion:
         :param t: The current timestep
         """
         mean = (
-            for_timesteps(self.posterior_mean_coef_x_0, t, x_start.shape) * x_start
-            + for_timesteps(self.posterior_mean_coef_x_t, t, x_start.shape) * x_t
+            for_timesteps(self.posterior_mean_coef_x_0, t, x_start) * x_start
+            + for_timesteps(self.posterior_mean_coef_x_t, t, x_start) * x_t
         )
         assert mean.shape == x_start.shape and x_start.shape == x_t.shape
         return mean
@@ -172,10 +172,9 @@ class GaussianDiffusion:
 
         N = x_0.shape[0]
         assert t.shape == (N,)
-        shape = x_0.shape
 
-        mean = for_timesteps(self.sqrt_alphas_cumprod, t, shape) * x_0
-        var = for_timesteps(self.sqrt_one_minus_alphas_cumprod, t, shape)
+        mean = for_timesteps(self.sqrt_alphas_cumprod, t, x_0) * x_0
+        var = for_timesteps(self.sqrt_one_minus_alphas_cumprod, t, x_0)
         assert mean.shape[0] == N and var.shape[0] == N
         return mean + var * noise
 
@@ -188,8 +187,8 @@ class GaussianDiffusion:
         calculate the mean of q(x_{t-1}|x_t,x_0)
         """
         return (
-            x_t * for_timesteps(self.recip_sqrt_alphas_cumprod, t, x_t.shape)
-            - for_timesteps(self.sqrt_recip_alphas_cumprod_minus1, t, x_t.shape) * eps
+            x_t * for_timesteps(self.recip_sqrt_alphas_cumprod, t, x_t)
+            - for_timesteps(self.sqrt_recip_alphas_cumprod_minus1, t, x_t) * eps
         )
 
     def model_v_to_log_variance(self, v, t):
@@ -199,8 +198,8 @@ class GaussianDiffusion:
         """
 
         # Turn the model output into a variance (15) in [0]
-        min_log = for_timesteps(self.posterior_log_variance_clipped, t, v.shape)
-        max_log = for_timesteps(self.log_betas, t, v.shape)
+        min_log = for_timesteps(self.posterior_log_variance_clipped, t, v)
+        max_log = for_timesteps(self.log_betas, t, v)
 
         # Model outputs between [-1, 1] for [min_var, max_var]
         frac = (v + 1) / 2
@@ -236,7 +235,7 @@ class GaussianDiffusion:
         pred_log_var = self.model_v_to_log_variance(model_v, t)
         return pred_mean, pred_log_var
 
-    def training_losses(self, model_output, x_0, x_t, t, noise):
+    def training_losses(self, model_output, *, x_0, x_t, t, noise):
         C = x_0.shape[1]
 
         # model_eps: the model is predicting the noise

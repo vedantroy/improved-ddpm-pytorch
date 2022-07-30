@@ -70,21 +70,19 @@ class IDDPM(ComposerModel):
         # normalize images to [-1, 1]
         batch = ((batch / 255) * 2) - 1
 
-        print(N)
-
         # Only support uniform sampling
-        t = th.randint(self.diffusion.n_timesteps, (N,))
+        t = th.randint(self.diffusion.n_timesteps, (N,)).to(device=batch.device)
 
         x_0 = batch
         noise = th.randn_like(x_0)
         x_t = self.diffusion.q_sample(x_0, t, noise)
         model_out = self.model(batch, t)
-        d = dict(x_0=x_0, x_t=x_t, noise=noise, model_out=model_out)
+        d = dict(x_0=x_0, x_t=x_t, noise=noise, model_out=model_out, t=t)
         return SimpleNamespace(**d)
 
     def loss(self, out, _):
         mse_loss, vb_loss = self.diffusion.training_losses(
-            out.x_0, out.x_t, out.t, out.noise
+            out.model_out, x_0=out.x_0, x_t=out.x_t, t=out.t, noise=out.noise
         )
         return mse_loss + vb_loss
 
@@ -96,12 +94,12 @@ if __name__ == "__main__":
 
     ds = StreamingDataset(
         remote=None,
-        local="./dataset",
+        local="./data/dataset",
         decoders={"img": load_tensor},
-        batch_size=4,
+        batch_size=1,
         shuffle=True,
     )
-    train_dl = DataLoader(ds, batch_size=None, shuffle=False)
+    train_dl = DataLoader(ds, batch_size=1, shuffle=False)
 
     trainer = Trainer(
         model=iddpm,
