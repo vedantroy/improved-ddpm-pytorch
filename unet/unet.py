@@ -177,6 +177,8 @@ class UNet(nn.Module):
         else:
             raise Exception(f"Unknown layer type: {type(l)}")
 
+    # This is before I realized Pytorch
+    # will print the model architecture ...
     def print_architecture(self):
         print_div = lambda x: print(f"\n===={x}====\n")
         print_div("IN")

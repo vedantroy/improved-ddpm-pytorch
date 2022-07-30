@@ -277,4 +277,4 @@ class GaussianDiffusion:
         # > overwhelming L_simple
         # from [0]
         vb_loss *= self.n_timesteps / 1000.0
-        return mse_loss + vb_loss
+        return mse_loss, vb_loss
