@@ -2,6 +2,7 @@ import torch as th
 import yahp as hp
 from composer import ComposerModel, Trainer, TimeUnit
 from composer.datasets.streaming import StreamingDataset
+from composer.callbacks import CheckpointSaver, LRMonitor
 from diffusion.diffusion import GaussianDiffusion, cosine_betas
 from unet.unet import UNet
 from torch.utils.data import DataLoader
@@ -80,10 +81,12 @@ class IDDPM(ComposerModel):
         d = dict(x_0=x_0, x_t=x_t, noise=noise, model_out=model_out, t=t)
         return SimpleNamespace(**d)
 
-    def loss(self, out, _):
+
+    def loss(self, out, batch):
         mse_loss, vb_loss = self.diffusion.training_losses(
             out.model_out, x_0=out.x_0, x_t=out.x_t, t=out.t, noise=out.noise
         )
+        self.logger.data_batch({"mse_loss": mse_loss, "vb_loss": vb_loss})
         return mse_loss + vb_loss
 
 
@@ -110,5 +113,6 @@ if __name__ == "__main__":
         max_duration="10ep",
         device="gpu",
         precision="amp",
+        grad_accum="auto",
     )
     trainer.fit()
