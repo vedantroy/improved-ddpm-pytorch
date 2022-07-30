@@ -10,3 +10,9 @@ unet:
 diffusion:
   schedule: cosine
   steps: 1000
+#unet2:
+#  - Conv2d:
+#     - in_channels:  3
+#     - out_channels: 3
+#  - Residual:
+#     fn:

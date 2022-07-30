@@ -1,0 +1,179 @@
+unet:
+  in_channels: 3
+  # learning sigma
+  out_channels: 6
+  model_channels: 128
+  Blocks:
+   # Down Layer 1
+   - ResNet:
+      in_channels: 128
+      out_channels: 128
+      time_emb_channels: 512
+     skip: push
+   - ResNet:
+      in_channels: 128
+      out_channels: 128
+      time_emb_channels: 512
+     skip: push
+   - ResNet:
+      in_channels: 128
+      out_channels: 128
+      time_emb_channels: 512
+     skip: push
+   - Downsample:
+      channels: 128
+     skip: push
+
+   # Down Layer 2
+   - ResNet:
+      in_channels: 128
+      out_channels: 256
+      time_emb_channels: 512
+   - Attention:
+      channels: 256
+      heads: 4
+     skip: push
+   - ResNet:
+      in_channels: 256
+      out_channels: 256
+      time_emb_channels: 512
+   - Attention:
+      channels: 256
+      heads: 4
+     skip: push
+   - ResNet:
+      in_channels: 256
+      out_channels: 256
+      time_emb_channels: 512
+   - Attention:
+      channels: 256
+      heads: 4
+     skip: push
+   - Downsample:
+      channels: 256
+     skip: push
+
+   # Down Layer 3
+   - ResNet:
+      in_channels: 256
+      out_channels: 512
+      time_emb_channels: 512
+   - Attention:
+      channels: 256
+      heads: 4
+     skip: push
+   - ResNet:
+      in_channels: 512
+      out_channels: 512
+      time_emb_channels: 512
+   - Attention:
+      channels: 256
+      heads: 4
+     skip: push
+   - ResNet:
+      in_channels: 512
+      out_channels: 512
+      time_emb_channels: 512
+   - Attention:
+      channels: 256
+      heads: 4
+     skip: push
+   - Downsample:
+      channels: 512
+     skip: push
+
+    # Middle Layer
+    - ResNet:
+       in_channels: 512
+       out_channels: 512
+       time_emb_channels: 512
+    - Attention:
+       channels: 512
+       heads: 4
+    - ResNet:
+       in_channels: 512
+       out_channels: 512
+       time_emb_channels: 512
+      
+    # Out Layer 1
+   - ResNet:
+      in_channels: 1024
+      out_channels: 512
+      time_emb_channels: 512
+     skip: pop
+   - Attention:
+      channels: 512
+      heads: 4
+   - ResNet:
+      in_channels: 1024
+      out_channels: 512
+      time_emb_channels: 512
+     skip: pop
+   - Attention:
+      channels: 512
+      heads: 4
+   - ResNet:
+      in_channels: 512
+      out_channels: 512
+      time_emb_channels: 512
+     skip: pop
+   - Attention:
+      channels: 512
+      heads: 4
+  - ResNet:
+     in_channels: 768
+     out_channels: 512
+    skip: pop
+  - Attention:
+     in_channels: 512
+   - Upsample:
+      channels: 512
+
+    # Out Layer 2
+   - ResNet:
+      in_channels: 1024
+      out_channels: 256
+      time_emb_channels: 512
+     skip: pop
+   - Attention:
+      channels: 512
+      heads: 4
+   - ResNet:
+      in_channels: 1024
+      out_channels: 256
+      time_emb_channels: 512
+     skip: pop
+   - Attention:
+      channels: 512
+      heads: 4
+   - ResNet:
+      in_channels: 512
+      out_channels: 256
+      time_emb_channels: 512
+     skip: pop
+   - Attention:
+      channels: 512
+      heads: 4
+  - ResNet:
+     in_channels: 768
+     out_channels: 256
+    skip: pop
+  - Attention:
+     in_channels: 256
+   - Upsample:
+      channels: 256
+
+
+  channel_mult: [1, 2, 3, 4]
+  layer_attn: [false, false, true, true]
+  res_blocks: 3
+  attention_heads: 4
+diffusion:
+  schedule: cosine
+  steps: 1000
+#unet2:
+#  - Conv2d:
+#     - in_channels:  3
+#     - out_channels: 3
+#  - Residual:
+#     fn:
