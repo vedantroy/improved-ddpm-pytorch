@@ -250,7 +250,7 @@ class GaussianDiffusion:
 
         true_mean = self.q_posterior_mean(x_0, x_t, t)
         true_log_var_clipped = for_timesteps(
-            self.posterior_log_variance_clipped, t, x_t.shape
+            self.posterior_log_variance_clipped, t, x_t
         )
 
         pred_mean, pred_log_var = self.p_mean_variance(

@@ -99,7 +99,7 @@ if __name__ == "__main__":
         batch_size=1,
         shuffle=True,
     )
-    train_dl = DataLoader(ds, batch_size=1, shuffle=False)
+    train_dl = DataLoader(ds, batch_size=1, shuffle=False, num_workers=8)
 
     trainer = Trainer(
         model=iddpm,
