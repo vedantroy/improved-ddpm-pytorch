@@ -7,6 +7,11 @@ local res_blocks = 3;
 local has_attn = [false, false, true, true];
 local channel_mult = [1, 2, 3, 4];
 local max_channels = model_channels * channel_mult[3];
+local skip_chans = [];
+
+#local add_skip(c) = 
+#      skip_chans = skip_chans + [c],
+#      'skip'
 
 local Layer(c_in, c_out, res_blocks, attn, down) = std.flattenArrays([
     ([
