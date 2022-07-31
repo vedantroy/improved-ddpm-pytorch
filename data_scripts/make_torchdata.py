@@ -28,8 +28,11 @@ def build_datapipe(root_dir, batch_size):
     # > First, note that we used a `ShardingFilter` in the previous `build_data_pipe` function:
     # > As of this writing, this is a necessary workaround to avoid data duplication when 
     # > we use more than 1 worker. [...]
+
+    # Don't use the datapipe's batching b/c it conflicts with
+    # the dataloader's batching (which will collate unnecessarily)
     datapipe = datapipe.sharding_filter()
-    return datapipe.batch(batch_size)
+    return datapipe
 
 @dataclass
 class Args(hp.Hparams):
@@ -41,7 +44,7 @@ if __name__ == "__main__":
     args = Args.create(None, None, cli_args=True)
     datapipe = build_datapipe(args.in_dir, args.batch_size)
 
-    dl = DataLoader(datapipe, batch_size=1, num_workers=8)
+    dl = DataLoader(datapipe, batch_size=args.batch_size, num_workers=8)
 
     _, _, files = next(os.walk(args.in_dir))
     total_files = len(files)
@@ -50,5 +53,6 @@ if __name__ == "__main__":
     out_dir.mkdir(parents=True)
 
     for idx, batch in enumerate(tqdm(dl, total=total_files / args.batch_size)):
+        assert batch[0].shape == (3, 256, 256)
         df = pa.table({"img": [save_tensor(item) for item in batch]})
         pq.write_table(df, out_dir / f"{idx}.parquet")
