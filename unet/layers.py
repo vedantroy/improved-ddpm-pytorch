@@ -128,17 +128,17 @@ class QKVAttention(nn.Module):
 
 
 class AttentionBlock(nn.Module):
-    def __init__(self, channels, num_heads):
+    def __init__(self, channels, heads):
         super().__init__()
         self.channels = channels
-        self.num_heads = num_heads
+        self.heads = heads
         self.layers = nn.Sequential(
             Rearrange("b c h w -> b c (h w)"),
             normalization(channels),
             nn.Conv1d(channels, channels * 3, kernel_size=1),
-            Rearrange("b (heads c) s -> (b heads) c s", heads=num_heads),
+            Rearrange("b (heads c) s -> (b heads) c s", heads=heads),
             QKVAttention(),
-            Rearrange("(b heads) c s -> b (heads c) s", heads=num_heads),
+            Rearrange("(b heads) c s -> b (heads c) s", heads=heads),
             zero_module(nn.Conv1d(channels, channels, kernel_size=1)),
         )
 
@@ -152,7 +152,7 @@ class ResNetBlock(TimestepBlock):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.emb_channels = time_emb_channels
+        self.time_emb_channels = time_emb_channels
 
         self.in_layers = nn.Sequential(
             normalization(in_channels),

@@ -13,7 +13,6 @@ from typing import List
 
 from utils import load_tensor
 
-
 @dataclass
 class UNetParams(hp.Hparams):
     in_channels: int = hp.required("# input channels")
@@ -81,8 +80,7 @@ class IDDPM(ComposerModel):
         d = dict(x_0=x_0, x_t=x_t, noise=noise, model_out=model_out, t=t)
         return SimpleNamespace(**d)
 
-
-    def loss(self, out, batch):
+    def loss(self, out, micro_batch):
         mse_loss, vb_loss = self.diffusion.training_losses(
             out.model_out, x_0=out.x_0, x_t=out.x_t, t=out.t, noise=out.noise
         )
@@ -99,10 +97,10 @@ if __name__ == "__main__":
         remote=None,
         local="./data/dataset",
         decoders={"img": load_tensor},
-        batch_size=1,
+        batch_size=32,
         shuffle=True,
     )
-    train_dl = DataLoader(ds, batch_size=1, shuffle=False, num_workers=8)
+    train_dl = DataLoader(ds, batch_size=32, shuffle=False, num_workers=8)
 
     trainer = Trainer(
         model=iddpm,
@@ -113,6 +111,6 @@ if __name__ == "__main__":
         max_duration="10ep",
         device="gpu",
         precision="amp",
-        grad_accum="auto",
+        grad_accum=32,
     )
     trainer.fit()

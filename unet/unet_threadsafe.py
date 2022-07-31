@@ -1,3 +1,4 @@
+import torch as th
 from torch import nn
 
 from .layers import (
@@ -44,12 +45,14 @@ class UNet(nn.Module):
         self.skips = []
         skip_connection_channels = []
 
-        self.in_conv = AddSkipConnection(
-            nn.Conv2d(in_channels, model_channels, kernel_size=3, padding=1), self.skips
+        self.downs = nn.ModuleList(
+            [
+                TimestepEmbedSequential(
+                    nn.Conv2d(in_channels, model_channels, kernel_size=3, padding=1)
+                )
+            ]
         )
         skip_connection_channels.append(model_channels)
-
-        self.downs = nn.ModuleList([])
         self.ups = nn.ModuleList([])
 
         for level, mult in enumerate(channel_mult):
@@ -63,7 +66,6 @@ class UNet(nn.Module):
             use_attn = layer_attn[level]
             is_last_layer_before_middle = level == len(channel_mult) - 1
 
-            down = []
             for idx in range(num_res_blocks):
                 cur_in_channels = (
                     prev_layer_out_channels if idx == 0 else cur_out_channels
@@ -71,15 +73,12 @@ class UNet(nn.Module):
                 blocks = [ResNetBlock(cur_in_channels, cur_out_channels, time_emb_dim)]
                 if use_attn:
                     blocks.append(Residual(AttentionBlock(cur_out_channels, num_heads)))
-                down.append(
-                    AddSkipConnection(TimestepEmbedSequential(*blocks), self.skips)
-                )
+                self.downs.append(TimestepEmbedSequential(*blocks))
                 skip_connection_channels.append(cur_out_channels)
             add_downsample = not is_last_layer_before_middle
             if add_downsample:
-                down.append(AddSkipConnection(Downsample(cur_out_channels), self.skips))
+                self.downs.append(TimestepEmbedSequential(Downsample(cur_out_channels)))
                 skip_connection_channels.append(cur_out_channels)
-            self.downs.append(TimestepEmbedSequential(*down))
 
         middle_channels = model_channels * channel_mult[-1]
         self.middle = TimestepEmbedSequential(
@@ -108,21 +107,17 @@ class UNet(nn.Module):
                     prev_layer_channels if idx == 0 else cur_out_channels
                 ) + skip_channels
                 up.append(
-                    TakeFromSkipConnection(
-                        ResNetBlock(
-                            res_block_in_channels,
-                            cur_out_channels,
-                            time_emb_dim,
-                        ),
-                        skips=self.skips,
-                        expected_channels=skip_channels,
+                    ResNetBlock(
+                        res_block_in_channels,
+                        cur_out_channels,
+                        time_emb_dim,
                     )
                 )
                 if use_attn:
                     up.append(Residual(AttentionBlock(cur_out_channels, num_heads)))
-            if not is_top_level:
-                up.append(Upsample(cur_out_channels))
-            self.ups.append(TimestepEmbedSequential(*up))
+                if not is_top_level and idx == num_res_blocks:
+                    up.append(Upsample(cur_out_channels))
+                self.ups.append(TimestepEmbedSequential(*up))
 
         self.out_layers = nn.Sequential(
             normalization(model_channels),
@@ -192,32 +187,30 @@ class UNet(nn.Module):
         print_div("OUT")
         self._print_layer(self.out_layers)
 
-    def assert_no_skips_left(self):
-        assert (
-            len(self.skips) == 0
-        ), f"skips should be empty, but has {len(self.skips)} unused skip connections"
-
     def forward(self, x, timesteps):
         # By using `AddSkipConnection` and `TakeFromSkipConnection`
         # the skip connections are hidden in the forward method, but
         # the network code is more descriptive/declarative in __init__
         # which is a net win
 
-        # We need to reset b/c composer will
-        # restart the forward method after it crashes in the middle
-        # w/ a Cuda OOM if grad_accum="auto" is set to `True`
-        self.skips = []
-
         emb = self.time_embed(timestep_embedding(timesteps, dim=self.model_channels))
 
-        x = self.in_conv(x)
+        skips = []
         for down in self.downs:
             x = down(x, emb)
+            skips.append(x)
+
+        # assert (
+        #    len(self.skips) == expected_skips
+        # ), f"skips should have {expected_skips} skip connections, but has {len(self.skips)}"
 
         x = self.middle(x, emb)
 
-        for up in self.ups:
-            x = up(x, emb)
+        print(f"SKIPS:" f"{len(skips)}")
 
-        self.assert_no_skips_left()
+        for up in self.ups:
+            with_skip = th.cat([x, skips.pop()], dim=1)
+            x = up(with_skip, emb)
+
+        assert len(skips) == 0, f"{len(skips)} skips left over"
         return self.out_layers(x)
