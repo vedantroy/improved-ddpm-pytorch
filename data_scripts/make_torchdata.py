@@ -12,27 +12,34 @@ import torchvision
 import torchdata.datapipes as dp
 from torch.utils.data import DataLoader
 
+
 def load_img(x):
     return torchvision.io.read_image(x)
 
-def save_tensor(t):
+
+def save_tensor(t, shape):
+    assert t.dtype == th.uint8
+    assert tuple(t.shape) == shape
     buf = io.BytesIO()
     th.save(t, buf)
     return buf.getvalue()
 
+
 def build_datapipe(root_dir, batch_size):
     datapipe = dp.iter.FSSpecFileLister(root_dir)
     datapipe = datapipe.map(load_img)
-    # Needed to use multiple workers 
+    # Needed to use multiple workers
     # https://sebastianraschka.com/blog/2022/datapipes.html
     # > First, note that we used a `ShardingFilter` in the previous `build_data_pipe` function:
-    # > As of this writing, this is a necessary workaround to avoid data duplication when 
+    # > As of this writing, this is a necessary workaround to avoid data duplication when
     # > we use more than 1 worker. [...]
 
-    # Don't use the datapipe's batching b/c it conflicts with
-    # the dataloader's batching (which will collate unnecessarily)
     datapipe = datapipe.sharding_filter()
-    return datapipe
+    # There's a seriously weird bug where if you
+    # don't use the datapipe's batch but use the DataLoader's batching
+    # then the parquet files will be huge (some sort of data duplication issue)
+    return datapipe.batch(batch_size)
+
 
 @dataclass
 class Args(hp.Hparams):
@@ -40,11 +47,12 @@ class Args(hp.Hparams):
     out_dir: str = hp.required("output directory")
     batch_size: int = hp.required("# of images per parquet file")
 
+
 if __name__ == "__main__":
     args = Args.create(None, None, cli_args=True)
     datapipe = build_datapipe(args.in_dir, args.batch_size)
 
-    dl = DataLoader(datapipe, batch_size=args.batch_size, num_workers=8)
+    dl = DataLoader(datapipe, batch_size=1, num_workers=8)
 
     _, _, files = next(os.walk(args.in_dir))
     total_files = len(files)
@@ -52,7 +60,15 @@ if __name__ == "__main__":
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True)
 
+    tensors_saved = 0
+
+    # The total # of batches are incorrect since near the end some batches will
+    # be half batches
     for idx, batch in enumerate(tqdm(dl, total=total_files / args.batch_size)):
-        assert batch[0].shape == (3, 256, 256)
-        df = pa.table({"img": [save_tensor(item) for item in batch]})
+        # `item[0]` to undo the DataLoader's collating
+        tensors = [save_tensor(item[0], shape=(3, 256, 256)) for item in batch]
+        tensors_saved += len(tensors)
+        df = pa.table({"img": tensors})
         pq.write_table(df, out_dir / f"{idx}.parquet")
+
+    print(f"Saved {tensors_saved} tensors")
