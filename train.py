@@ -92,6 +92,8 @@ class IDDPM(ComposerModel):
         mse_loss, vb_loss = self.diffusion.training_losses(
             out.model_out, x_0=out.x_0, x_t=out.x_t, t=out.t, noise=out.noise
         )
+        return th.mean(mse_loss), th.mean(vb_loss)
+        #print(mse_loss.shape, vb_loss.shape)
         # TODO(composer needs to fix this)
         # self.logger.data_batch({"mse_loss": mse_loss, "vb_loss": vb_loss})
         return mse_loss, vb_loss
@@ -126,7 +128,7 @@ def run():
     unet, diffusion = config.initialize_object()
     iddpm = IDDPM(unet, diffusion)
 
-    def make_trainer(train_dl, batch_size, lr=1e-4, duration='1000ep'):
+    def make_trainer(train_dl, grad_accum, lr=1e-4, duration='1000ep'):
         trainer = Trainer(
             model=iddpm,
             train_dataloader=train_dl,
@@ -137,7 +139,7 @@ def run():
             max_duration=duration,
             device="gpu",
             precision="fp32",
-            grad_accum=batch_size,
+            grad_accum=grad_accum,
             loggers=[
                 FileLogger(),
                 # don't save checkpoints to WandB
@@ -151,9 +153,10 @@ def run():
         raise Exception("unsupported")
         return
     elif MODE == "overfit":
-        batches, batch_size = 1, 10
+        batches, batch_size = 1, 32
+        micro_batch_size = batch_size // 2
         dl = overfit_dataloader(batches, batch_size, "./data/parquetx64")
-        trainer = make_trainer(dl, batch_size, lr=1e-4)
+        trainer = make_trainer(dl, batch_size // micro_batch_size, lr=1e-4)
         trainer.fit()
     elif MODE == "train":
         batch_size = 1
