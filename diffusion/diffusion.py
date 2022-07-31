@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 import torch as th
 import torch.nn.functional as F
 from einops import rearrange
@@ -70,8 +72,7 @@ def for_timesteps(a, t, broadcast_to):
 def f32(x):
     return x.to(th.float32)
 
-
-class GaussianDiffusion:
+class GaussianDiffusion(ABC):
     def __init__(self, betas):
         self.n_timesteps = betas.shape[0]
         alphas = 1 - betas
@@ -191,6 +192,20 @@ class GaussianDiffusion:
             - for_timesteps(self.sqrt_recip_alphas_cumprod_minus1, t, x_t) * eps
         )
 
+    @abstractmethod
+    def p_mean_variance(self, *args, **kwargs):
+        """
+        Get the model's predicted mean and variance for the distribution
+        that predicts x_{t-1}
+        """
+        pass
+
+    @abstractmethod
+    def training_losses(self, model_output, *, x_0, x_t, t, noise):
+        pass
+
+
+class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
     def model_v_to_log_variance(self, v, t):
         """
         Convert the model's v vector to an interpolated variance
@@ -222,10 +237,9 @@ class GaussianDiffusion:
         Get the model's predicted mean and variance for the distribution
         that predicts x_{t-1}
 
-        Do this by:
-        - predicting x_0 from epsilon
-        - using x_0 and x_t to predict the mean of q(x_{t-1}|x_t,x_0)
-        - turn the model's v vector into a variance
+        - Predict x_0 from epsilon
+        - Use x_0 and x_t to predict the mean of q(x_{t-1}|x_t,x_0)
+        - Turn the model's v vector into a variance
         """
         pred_x_0 = self.predict_x0_from_eps(x_t, t, model_eps)
         if threshold:

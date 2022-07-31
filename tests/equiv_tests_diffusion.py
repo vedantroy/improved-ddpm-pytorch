@@ -14,7 +14,7 @@ from openai_code.gaussian_diffusion import (
 )
 from diffusion.diffusion import (
     cosine_betas,
-    GaussianDiffusion as MyGaussianDiffusion,
+    LearnedVarianceGaussianDiffusion,
     for_timesteps,
 )
 
@@ -55,7 +55,7 @@ def test_gaussian_diffusion_vars():
         rescale_timesteps=False,
     )
 
-    my_gd = MyGaussianDiffusion(betas)
+    my_gd = LearnedVarianceGaussianDiffusion(betas)
     f32 = lambda x: th.from_numpy(x).to(th.float32)
     # testing.assert_close(f32(gd.posterior_variance), my_gd.posterior_variance)
     testing.assert_close(f32(gd.posterior_mean_coef1), my_gd.posterior_mean_coef_x_0)
@@ -90,7 +90,7 @@ def test_gaussian_diffusion_funcs():
         rescale_timesteps=False,
     )
 
-    my_gd = MyGaussianDiffusion(betas)
+    my_gd = LearnedVarianceGaussianDiffusion(betas)
 
     N, C, H, W = 2, 3, 64, 64
     x_0 = th.randn((N, C, H, W))
@@ -143,7 +143,7 @@ def test_gaussian_diffusion_e2e():
         loss_type=LossType.RESCALED_MSE,
         rescale_timesteps=False,
     )
-    my_gd = MyGaussianDiffusion(betas)
+    my_gd = LearnedVarianceGaussianDiffusion(betas)
 
     N, C, H, W = 5, 3, 64, 64
 
