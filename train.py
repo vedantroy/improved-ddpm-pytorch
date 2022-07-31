@@ -1,8 +1,13 @@
+from tqdm import tqdm
 import torch as th
 import yahp as hp
-from composer import ComposerModel, Trainer, TimeUnit
+import torchvision
+from composer import ComposerModel, Trainer
 from composer.datasets.streaming import StreamingDataset
-from composer.callbacks import CheckpointSaver, LRMonitor
+from composer.callbacks import CheckpointSaver, LRMonitor, SpeedMonitor
+from composer.optim.decoupled_weight_decay import DecoupledAdamW
+from composer.optim.scheduler import CosineAnnealingWithWarmupScheduler, CosineAnnealingScheduler
+from composer.loggers import WandBLogger, FileLogger
 from diffusion.diffusion import GaussianDiffusion, cosine_betas
 from unet.unet import UNet
 from torch.utils.data import DataLoader
@@ -10,8 +15,10 @@ from torch.utils.data import DataLoader
 from types import SimpleNamespace
 from dataclasses import dataclass
 from typing import List
+from pathlib import Path
 
 from utils import load_tensor
+
 
 @dataclass
 class UNetParams(hp.Hparams):
@@ -84,33 +91,77 @@ class IDDPM(ComposerModel):
         mse_loss, vb_loss = self.diffusion.training_losses(
             out.model_out, x_0=out.x_0, x_t=out.x_t, t=out.t, noise=out.noise
         )
-        self.logger.data_batch({"mse_loss": mse_loss, "vb_loss": vb_loss})
-        return mse_loss + vb_loss
+        # TODO(composer needs to fix this)
+        # self.logger.data_batch({"mse_loss": mse_loss, "vb_loss": vb_loss})
+        return mse_loss, vb_loss
 
+
+def scan_samples(model: ComposerModel, dl):
+    def unnormalize(x):
+        # Not sure if `.clamp` is necessary
+        return (((x + 1) / 2).clamp(-1, 1) * 255).to(dtype=th.uint8).cpu()
+
+    with th.no_grad():
+        model = model.cuda()
+        model.eval()
+        for idx, batch in enumerate(tqdm(dl)):
+            batch["img"] = batch["img"].cuda()
+            out = model(batch)
+            mse_loss, vb_loss = model.loss(out, batch)
+            if vb_loss.item() > 10:
+                print(f"High vb loss: {vb_loss}")
+                t = out.t.cpu().item()
+                img = unnormalize(out.x_0)[0]
+                noised_img = unnormalize(out.x_t)[0]
+                dir = Path("./vb_anomalies") / str(idx)
+                dir.mkdir(exist_ok=True, parents=True)
+                torchvision.io.write_png(img, str(dir / f"original_{t}.png"))
+                torchvision.io.write_png(noised_img, str(dir / f"noised_{t}.png"))
+
+MODE = "scan_samples"
 
 if __name__ == "__main__":
     config = TrainerConfig.create("./config/basic.yaml", None, cli_args=False)
     unet, diffusion = config.initialize_object()
     iddpm = IDDPM(unet, diffusion)
 
-    ds = StreamingDataset(
-        remote=None,
-        local="./data/dataset",
-        decoders={"img": load_tensor},
-        batch_size=32,
-        shuffle=True,
-    )
-    train_dl = DataLoader(ds, batch_size=32, shuffle=False, num_workers=8)
+    def dataset(batch_size, shuffle=True, local="./data/dataset"):
+        return StreamingDataset(
+            remote=None,
+            local=local,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            decoders={"img": load_tensor},
+        )
 
-    trainer = Trainer(
-        model=iddpm,
-        train_dataloader=train_dl,
-        eval_dataloader=None,
-        schedulers=[],
-        optimizers=[],
-        max_duration="10ep",
-        device="gpu",
-        precision="amp",
-        grad_accum=32,
-    )
-    trainer.fit()
+    def dataloader(ds, batch_size):
+        return DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=8)
+    
+    if MODE == "scan_samples":
+        batch_size = 1
+        ds = dataset(batch_size, shuffle=False)
+        dl = dataloader(ds, batch_size)
+        scan_samples(iddpm, dl)
+    elif MODE == "train":
+        batch_size = 1
+        ds = dataset(batch_size, shuffle=True)
+        train_dl = dataloader(ds, batch_size)
+        trainer = Trainer(
+            model=iddpm,
+            train_dataloader=train_dl,
+            eval_dataloader=None,
+            schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="0ba", t_max="1dur")],
+            # default learning rate used by [0]
+            optimizers=[DecoupledAdamW(iddpm.parameters(), lr=0.0000000001, betas=(0.9, 0.95))],
+            max_duration="10ep",
+            device="gpu",
+            precision="fp32",
+            grad_accum=batch_size,
+            loggers=[
+                FileLogger(),
+                # don't save checkpoints to WandB
+                WandBLogger(log_artifacts=False),
+            ],
+            callbacks=[LRMonitor(), SpeedMonitor(window_size=10), CheckpointSaver()],
+        )
+        trainer.fit()
