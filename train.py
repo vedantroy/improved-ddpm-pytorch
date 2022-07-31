@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import List
 from pathlib import Path
 
-from utils import load_tensor
+from dataloaders import overfit_dataloader
 
 
 @dataclass
@@ -72,7 +72,8 @@ class IDDPM(ComposerModel):
         self.diffusion = diffusion
 
     def forward(self, batch):
-        batch = batch["img"]
+        assert len(batch.shape) == 4
+        # print(batch[-1, -1, -1, -1])
         N, *_ = batch.shape
         # normalize images to [-1, 1]
         batch = ((batch / 255) * 2) - 1
@@ -96,64 +97,44 @@ class IDDPM(ComposerModel):
         return mse_loss, vb_loss
 
 
-def scan_samples(model: ComposerModel, dl):
-    def unnormalize(x):
-        # Not sure if `.clamp` is necessary
-        return (((x + 1) / 2).clamp(-1, 1) * 255).to(dtype=th.uint8).cpu()
+# def scan_samples(model: ComposerModel, dl):
+#     def unnormalize(x):
+#         # Not sure if `.clamp` is necessary
+#         return (((x + 1) / 2).clamp(-1, 1) * 255).to(dtype=th.uint8).cpu()
+#
+#     with th.no_grad():
+#         model = model.cuda()
+#         model.eval()
+#         for idx, batch in enumerate(tqdm(dl)):
+#             batch["img"] = batch["img"].cuda()
+#             out = model(batch)
+#             mse_loss, vb_loss = model.loss(out, batch)
+#             if vb_loss.item() > 10:
+#                 print(f"High vb loss: {vb_loss}")
+#                 t = out.t.cpu().item()
+#                 img = unnormalize(out.x_0)[0]
+#                 noised_img = unnormalize(out.x_t)[0]
+#                 dir = Path("./vb_anomalies") / str(idx)
+#                 dir.mkdir(exist_ok=True, parents=True)
+#                 torchvision.io.write_png(img, str(dir / f"original_{t}.png"))
+#                 torchvision.io.write_png(noised_img, str(dir / f"noised_{t}.png"))
 
-    with th.no_grad():
-        model = model.cuda()
-        model.eval()
-        for idx, batch in enumerate(tqdm(dl)):
-            batch["img"] = batch["img"].cuda()
-            out = model(batch)
-            mse_loss, vb_loss = model.loss(out, batch)
-            if vb_loss.item() > 10:
-                print(f"High vb loss: {vb_loss}")
-                t = out.t.cpu().item()
-                img = unnormalize(out.x_0)[0]
-                noised_img = unnormalize(out.x_t)[0]
-                dir = Path("./vb_anomalies") / str(idx)
-                dir.mkdir(exist_ok=True, parents=True)
-                torchvision.io.write_png(img, str(dir / f"original_{t}.png"))
-                torchvision.io.write_png(noised_img, str(dir / f"noised_{t}.png"))
+MODE = "overfit"
 
-MODE = "scan_samples"
-
-if __name__ == "__main__":
+def run():
     config = TrainerConfig.create("./config/basic.yaml", None, cli_args=False)
     unet, diffusion = config.initialize_object()
     iddpm = IDDPM(unet, diffusion)
 
-    def dataset(batch_size, shuffle=True, local="./data/dataset"):
-        return StreamingDataset(
-            remote=None,
-            local=local,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            decoders={"img": load_tensor},
-        )
-
-    def dataloader(ds, batch_size):
-        return DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=8)
-    
-    if MODE == "scan_samples":
-        batch_size = 1
-        ds = dataset(batch_size, shuffle=False)
-        dl = dataloader(ds, batch_size)
-        scan_samples(iddpm, dl)
-    elif MODE == "train":
-        batch_size = 1
-        ds = dataset(batch_size, shuffle=True)
-        train_dl = dataloader(ds, batch_size)
+    def make_trainer(train_dl, batch_size, lr=1e-4, duration='1000ep'):
         trainer = Trainer(
             model=iddpm,
             train_dataloader=train_dl,
             eval_dataloader=None,
-            schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="0ba", t_max="1dur")],
+            schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="200ba", t_max="1dur")],
             # default learning rate used by [0]
-            optimizers=[DecoupledAdamW(iddpm.parameters(), lr=0.0000000001, betas=(0.9, 0.95))],
-            max_duration="10ep",
+            optimizers=[DecoupledAdamW(iddpm.parameters(), lr=lr, betas=(0.9, 0.95))],
+            max_duration=duration,
             device="gpu",
             precision="fp32",
             grad_accum=batch_size,
@@ -164,4 +145,22 @@ if __name__ == "__main__":
             ],
             callbacks=[LRMonitor(), SpeedMonitor(window_size=10), CheckpointSaver()],
         )
+        return trainer
+
+    if MODE == "scan_samples":
+        raise Exception("unsupported")
+        return
+    elif MODE == "overfit":
+        batches, batch_size = 1, 10
+        dl = overfit_dataloader(batches, batch_size, "./data/parquetx64")
+        trainer = make_trainer(dl, batch_size, lr=1e-4)
         trainer.fit()
+    elif MODE == "train":
+        batch_size = 1
+        ds = dataset(batch_size, shuffle=True)
+        train_dl = dataloader(ds, batch_size)
+        trainer = make_trainer(dl, batch_size, lr=1e-4)
+        trainer.fit()
+
+if __name__ == "__main__":
+    run()
