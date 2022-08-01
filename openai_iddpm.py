@@ -11,6 +11,7 @@ from tests.openai_code.gaussian_diffusion import (
 )
 from tests.openai_code.unet import UNetModel
 from diffusion.diffusion import cosine_betas
+from unet.unet import UNet
 
 from typing import List
 
@@ -43,22 +44,31 @@ class UNetParams(hp.Hparams):
     attention_resolutions: List[int] = hp.required("where to apply attention")
 
     def initialize_object(self):
-        return UNetModel(
+        return UNet(
             in_channels=self.in_channels,
-            model_channels=self.model_channels,
             out_channels=self.out_channels,
-            num_res_blocks=self.res_blocks,
-            attention_resolutions=self.attention_resolutions,
-            dropout=0,
+            model_channels=self.model_channels,
             channel_mult=self.channel_mult,
-            conv_resample=True,
-            dims=2,
-            num_classes=None,
-            use_checkpoint=False,
-            num_heads=self.attention_heads,
-            num_heads_upsample=-1,
-            use_scale_shift_norm=True,
+            layer_attn=(False, False, True, True),
+            num_res_blocks=self.res_blocks,
+            num_heads=self.attention_heads
         )
+        #return UNetModel(
+        #    in_channels=self.in_channels,
+        #    model_channels=self.model_channels,
+        #    out_channels=self.out_channels,
+        #    num_res_blocks=self.res_blocks,
+        #    attention_resolutions=self.attention_resolutions,
+        #    dropout=0,
+        #    channel_mult=self.channel_mult,
+        #    conv_resample=True,
+        #    dims=2,
+        #    num_classes=None,
+        #    use_checkpoint=False,
+        #    num_heads=self.attention_heads,
+        #    num_heads_upsample=-1,
+        #    use_scale_shift_norm=True,
+        #)
 
 
 @dataclass
