@@ -1,11 +1,12 @@
+from typing import List
 from types import SimpleNamespace
-import torch as th
 from dataclasses import dataclass
+
+import torch as th
 from composer import ComposerModel
 import yahp as hp
-from typing import List
 from unet.unet import UNet
-from diffusion.diffusion import GaussianDiffusion, cosine_betas
+from diffusion.diffusion import FixedVarianceGaussianDiffusion, cosine_betas
 
 
 @dataclass
@@ -41,7 +42,7 @@ class DiffusionParams(hp.Hparams):
     def initialize_object(self):
         assert self.schedule == "cosine", "Only cosine schedule is supported"
         betas = cosine_betas(self.steps)
-        return GaussianDiffusion(betas)
+        return FixedVarianceGaussianDiffusion(betas)
 
 
 @dataclass
@@ -54,7 +55,7 @@ class TrainerConfig(hp.Hparams):
 
 
 class IDDPM(ComposerModel):
-    def __init__(self, unet: UNet, diffusion: GaussianDiffusion):
+    def __init__(self, unet: UNet, diffusion: FixedVarianceGaussianDiffusion):
         super().__init__()
         self.model = unet
         self.diffusion = diffusion
@@ -64,20 +65,29 @@ class IDDPM(ComposerModel):
         # print(batch[-1, -1, -1, -1])
         N, *_ = batch.shape
         # normalize images to [-1, 1]
-        batch = ((batch / 255) * 2) - 1
+        x_0 = ((batch / 255) * 2) - 1
 
         # Only support uniform sampling
         t = th.randint(self.diffusion.n_timesteps, (N,)).to(device=batch.device)
 
-        x_0 = batch
         noise = th.randn_like(x_0)
         x_t = self.diffusion.q_sample(x_0, t, noise)
-        model_out = self.model(batch, t)
-        d = dict(x_0=x_0, x_t=x_t, noise=noise, model_out=model_out, t=t)
+        model_out = self.model(x_t, t)
+        x_0_pred = self.diffusion.predict_x0_from_eps(x_t=x_t, t=t, eps=model_out)
+        d = dict(
+            noise=noise,
+            model_out=model_out,
+            # for logging
+            x_t=x_t,
+            t=t,
+            x_0_pred=x_0_pred,
+        )
+        # TODO: Use NamedTuple
         return SimpleNamespace(**d)
 
     def loss(self, out, micro_batch):
-        mse_loss, vb_loss = self.diffusion.training_losses(
-            out.model_out, x_0=out.x_0, x_t=out.x_t, t=out.t, noise=out.noise
+        mse_loss = self.diffusion.training_losses_with_model_output(
+            model_output=out.model_out,
+            noise=out.noise,
         )
-        return th.mean(mse_loss), th.mean(vb_loss)
+        return th.mean(mse_loss)

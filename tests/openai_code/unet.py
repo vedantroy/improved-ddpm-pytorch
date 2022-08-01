@@ -270,7 +270,7 @@ class QKVAttention(nn.Module):
         # We perform two matmuls with the same number of ops.
         # The first computes the weight matrix, the second computes
         # the combination of the value vectors.
-        matmul_ops = 2 * b * (num_spatial ** 2) * c
+        matmul_ops = 2 * b * (num_spatial**2) * c
         model.total_ops += th.DoubleTensor([matmul_ops])
 
 
@@ -435,7 +435,7 @@ class UNetModel(nn.Module):
             zero_module(conv_nd(dims, model_channels, out_channels, 3, padding=1)),
         )
 
-    #def convert_to_fp16(self):
+    # def convert_to_fp16(self):
     #    """
     #    Convert the torso of the model to float16.
     #    """
@@ -443,7 +443,7 @@ class UNetModel(nn.Module):
     #    self.middle_block.apply(convert_module_to_f16)
     #    self.output_blocks.apply(convert_module_to_f16)
 
-    #def convert_to_fp32(self):
+    # def convert_to_fp32(self):
     #    """
     #    Convert the torso of the model to float32.
     #    """
