@@ -32,7 +32,6 @@ def run():
     unet, diffusion = config.initialize_object()
     iddpm = IDDPM(unet, diffusion)
 
-
     if MODE == "scan_samples":
         raise Exception("unsupported")
         return
@@ -40,8 +39,10 @@ def run():
         batches, batch_size = 1, 2
         micro_batch_size = batch_size // 1
         dl = overfit_dataloader(batches, 16, "./data/parquetx64")
-        #manual_train(dl, diffusion, unet)
-        trainer = make_trainer(iddpm, dl, batch_size // micro_batch_size, lr=1e-4, duration="1000ba")
+        # manual_train(dl, diffusion, unet)
+        trainer = make_trainer(
+            iddpm, dl, batch_size // micro_batch_size, lr=1e-4, duration="1000ba"
+        )
         trainer.fit()
     elif MODE == "train":
         batch_size = 1

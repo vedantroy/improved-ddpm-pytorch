@@ -300,6 +300,7 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
     #   vb_loss *= self.n_timesteps / 1000.0
     #   return mse_loss, vb_loss
 
+
 class FixedVarianceGaussianDiffusion(GaussianDiffusion):
     def p_mean_variance(self, x_t, model_eps, threshold):
         pass

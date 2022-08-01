@@ -1,11 +1,13 @@
+from typing import List
 from types import SimpleNamespace
-import torch as th
 from dataclasses import dataclass
+
+import torch as th
 from composer import ComposerModel
 import yahp as hp
-from typing import List
 from unet.unet import UNet
 from diffusion.diffusion import FixedVarianceGaussianDiffusion, cosine_betas
+
 
 @dataclass
 class UNetParams(hp.Hparams):
@@ -21,15 +23,15 @@ class UNetParams(hp.Hparams):
     attention_heads: int = hp.required("# attention heads")
 
     def initialize_object(self):
-      return UNet(
-          in_channels=self.in_channels,
-          out_channels=self.out_channels,
-          model_channels=self.model_channels,
-          channel_mult=self.channel_mult,
-          layer_attn=self.layer_attn,
-          num_res_blocks=self.res_blocks,
-          num_heads=self.attention_heads,
-      )
+        return UNet(
+            in_channels=self.in_channels,
+            out_channels=self.out_channels,
+            model_channels=self.model_channels,
+            channel_mult=self.channel_mult,
+            layer_attn=self.layer_attn,
+            num_res_blocks=self.res_blocks,
+            num_heads=self.attention_heads,
+        )
 
 
 @dataclass
@@ -71,7 +73,8 @@ class IDDPM(ComposerModel):
         noise = th.randn_like(x_0)
         x_t = self.diffusion.q_sample(x_0, t, noise)
         model_out = self.model(x_t, t)
-        d = dict(noise=noise, model_out=model_out)
+        d = dict(noise=noise, model_out=model_out, x_t=x_t, t=t)
+        # TODO: Use NamedTuple
         return SimpleNamespace(**d)
 
     def loss(self, out, micro_batch):
