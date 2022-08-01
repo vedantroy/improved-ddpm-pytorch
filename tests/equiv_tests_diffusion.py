@@ -13,6 +13,7 @@ from openai_code.gaussian_diffusion import (
     LossType,
 )
 from diffusion.diffusion import (
+    FixedVarianceGaussianDiffusion,
     cosine_betas,
     LearnedVarianceGaussianDiffusion,
     for_timesteps,
@@ -138,12 +139,11 @@ def test_gaussian_diffusion_e2e():
     gd = GaussianDiffusion(
         betas=betas,
         model_mean_type=ModelMeanType.EPSILON,
-        model_var_type=ModelVarType.LEARNED_RANGE,
-        # this represents the MSE loss + VLB loss w/ VLB loss scaled down by 1000
+        model_var_type=ModelVarType.FIXED_SMALL,
         loss_type=LossType.RESCALED_MSE,
         rescale_timesteps=False,
     )
-    my_gd = LearnedVarianceGaussianDiffusion(betas)
+    my_gd = FixedVarianceGaussianDiffusion(betas)
 
     N, C, H, W = 5, 3, 64, 64
 
@@ -154,19 +154,14 @@ def test_gaussian_diffusion_e2e():
     # 2.2579e+00, 1.9633e-01, 2.9445e-02, 4.3882e+00, 1.4500e+03
     t = th.tensor([0, 10, 900, 998, 999])
 
-    fake_output = th.randn((N, C * 2, H, W))
+    fake_output = th.randn((N, C, H, W))
 
     model = lambda *args, r=fake_output: r
-
     losses = gd.training_losses(model, x_0, t, noise=noise)
-    # print(losses)
 
-    x_t = my_gd.q_sample(x_0, t, noise)
-    mse_loss, vb_loss = my_gd.training_losses(
-        fake_output, x_0=x_0, x_t=x_t, t=t, noise=noise
-    )
+    mse_loss = my_gd.training_losses(model, x_0, t, noise=noise)
 
-    testing.assert_close(losses["loss"], mse_loss + vb_loss)
+    testing.assert_close(losses["loss"], mse_loss)
     print("test_gaussian_diffusion_e2e passed")
 
 
