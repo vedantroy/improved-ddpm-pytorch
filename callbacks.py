@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 import typing
 
+import torch as th
 import wandb
 import torchvision.transforms.functional as TVF
 from composer.utils import ensure_tuple
@@ -35,6 +36,9 @@ class DiffusionMonitor(Callback):
             x_t = x_t[0]
             t = t[0]
 
+            assert x_0.dtype == th.uint8
+            # TVF accepts byte tensors not [-1, 1] tensors
+            x_t = (((x_t + 1) / 2) * 255).to(th.uint8)
             x_0_pil = TVF.to_pil_image(x_0)
             x_t_pil = TVF.to_pil_image(x_t)
 
