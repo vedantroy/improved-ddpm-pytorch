@@ -9,8 +9,10 @@ from tests.openai_code.gaussian_diffusion import (
     ModelVarType,
     LossType,
 )
-from my_iddpm import UNetParams
+from tests.openai_code.unet import UNetModel
 from diffusion.diffusion import cosine_betas
+
+from typing import List
 
 @dataclass
 class DiffusionParams(hp.Hparams):
@@ -27,6 +29,35 @@ class DiffusionParams(hp.Hparams):
             model_var_type=ModelVarType.FIXED_SMALL,
             loss_type=LossType.MSE,
             rescale_timesteps=True
+        )
+
+    
+@dataclass
+class UNetParams(hp.Hparams):
+    in_channels: int = hp.required("# input channels")
+    out_channels: int = hp.required("# output channels")
+    model_channels: int = hp.required("# model channels")
+    channel_mult: List[int] = hp.required("the channel multipliers")
+    res_blocks: int = hp.required("# ResNet blocks")
+    attention_heads: int = hp.required("# attention heads")
+    attention_resolutions: List[int] = hp.required("where to apply attention")
+
+    def initialize_object(self):
+        return UNetModel(
+            in_channels=self.in_channels,
+            model_channels=self.model_channels,
+            out_channels=self.out_channels,
+            num_res_blocks=self.res_blocks,
+            attention_resolutions=self.attention_resolutions,
+            dropout=0,
+            channel_mult=self.channel_mult,
+            conv_resample=True,
+            dims=2,
+            num_classes=None,
+            use_checkpoint=False,
+            num_heads=self.attention_heads,
+            num_heads_upsample=-1,
+            use_scale_shift_norm=True,
         )
 
 
@@ -62,3 +93,33 @@ class OpenAIIDDPM(ComposerModel):
         losses = self.diffusion.training_losses(model=self.model, x_start=out.x_0, t=out.t)
         assert (losses["loss"] == losses["mse"]).all()
         return th.mean(losses["loss"])
+
+def manual_train(dl, diffusion, unet):
+    from torch.optim.lr_scheduler import CosineAnnealingLR
+    from composer.optim import DecoupledAdamW
+    from torch.optim.adamw import AdamW
+
+    unet = unet.cuda()
+    optimizer = AdamW(unet.parameters(), lr=1e-4, betas=(0.9, 0.95))
+    # scheduler = CosineAnnealingLR(optimizer=optimizer, T_max=1_000)
+
+    for batch in dl:
+        optimizer.zero_grad()
+        batch = batch.cuda()
+
+        assert len(batch.shape) == 4
+        N, *_ = batch.shape
+        print(N)
+        # normalize images to [-1, 1]
+        batch = ((batch / 255) * 2) - 1
+        x_0 = batch
+
+        # Only support uniform sampling
+        t = th.randint(diffusion.num_timesteps, (N,)).to(device=x_0.device)
+        losses = diffusion.training_losses(model=unet, x_start=x_0, t=t)
+        assert (losses["loss"] == losses["mse"]).all()
+        mean = th.mean(losses["loss"])
+        print(mean)
+        mean.backward()
+        optimizer.step()
+        # scheduler.step()

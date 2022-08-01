@@ -1,6 +1,6 @@
 from trainer import make_trainer
 from dataloaders import overfit_dataloader
-from openai_iddpm import OpenAIIDDPM, TrainerConfig as OpenAITrainerConfig
+from openai_iddpm import OpenAIIDDPM, TrainerConfig as OpenAITrainerConfig, manual_train
 from my_iddpm import TrainerConfig, IDDPM
 
 # def scan_samples(model: ComposerModel, dl):
@@ -38,15 +38,17 @@ def run():
     iddpm_klass = OpenAIIDDPM if MODEL == "openai" else IDDPM
     iddpm = iddpm_klass(unet, diffusion)
 
+
     if MODE == "scan_samples":
         raise Exception("unsupported")
         return
     elif MODE == "overfit":
         batches, batch_size = 1, 32
         micro_batch_size = batch_size // 2
-        dl = overfit_dataloader(batches, batch_size, "./data/parquetx64")
-        trainer = make_trainer(iddpm, dl, batch_size // micro_batch_size, lr=1e-4)
-        trainer.fit()
+        dl = overfit_dataloader(batches, 16, "./data/parquetx64")
+        manual_train(dl, diffusion, unet)
+        #trainer = make_trainer(iddpm, dl, batch_size // micro_batch_size, lr=1e-4)
+        #trainer.fit()
     elif MODE == "train":
         batch_size = 1
         ds = dataset(batch_size, shuffle=True)
