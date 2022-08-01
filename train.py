@@ -1,103 +1,7 @@
-from tqdm import tqdm
-import torch as th
-import yahp as hp
-import torchvision
-from composer import ComposerModel, Trainer
-from composer.datasets.streaming import StreamingDataset
-from composer.callbacks import CheckpointSaver, LRMonitor, SpeedMonitor
-from composer.optim.decoupled_weight_decay import DecoupledAdamW
-from composer.optim.scheduler import CosineAnnealingWithWarmupScheduler, CosineAnnealingScheduler
-from composer.loggers import WandBLogger, FileLogger
-from diffusion.diffusion import GaussianDiffusion, cosine_betas
-from unet.unet import UNet
-from torch.utils.data import DataLoader
-
-from types import SimpleNamespace
-from dataclasses import dataclass
-from typing import List
-from pathlib import Path
-
+from trainer import make_trainer
 from dataloaders import overfit_dataloader
-
-
-@dataclass
-class UNetParams(hp.Hparams):
-    in_channels: int = hp.required("# input channels")
-    out_channels: int = hp.required("# output channels")
-    # (C in [0] under Appendix A "Hyperparameters")
-    model_channels: int = hp.required("# model channels")
-    channel_mult: List[int] = hp.required("the channel multipliers")
-    layer_attn: List[bool] = hp.required(
-        "whether to use attention between ResNet blocks"
-    )
-    res_blocks: int = hp.required("# ResNet blocks")
-    attention_heads: int = hp.required("# attention heads")
-
-    def initialize_object(self):
-        return UNet(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
-            model_channels=self.model_channels,
-            channel_mult=self.channel_mult,
-            layer_attn=self.layer_attn,
-            num_res_blocks=self.res_blocks,
-            num_heads=self.attention_heads,
-        )
-
-
-@dataclass
-class DiffusionParams(hp.Hparams):
-    steps: int = hp.required("# diffusion steps")
-    schedule: str = hp.required("diffusion schedule")
-
-    def initialize_object(self):
-        assert self.schedule == "cosine", "Only cosine schedule is supported"
-        betas = cosine_betas(self.steps)
-        return GaussianDiffusion(betas)
-
-
-@dataclass
-class TrainerConfig(hp.Hparams):
-    unet: UNetParams = hp.required("the UNet model")
-    diffusion: DiffusionParams = hp.required("Gaussian diffusion parameters")
-
-    def initialize_object(self):
-        return self.unet.initialize_object(), self.diffusion.initialize_object()
-
-
-class IDDPM(ComposerModel):
-    def __init__(self, unet: UNet, diffusion: GaussianDiffusion):
-        super().__init__()
-        self.model = unet
-        self.diffusion = diffusion
-
-    def forward(self, batch):
-        assert len(batch.shape) == 4
-        # print(batch[-1, -1, -1, -1])
-        N, *_ = batch.shape
-        # normalize images to [-1, 1]
-        batch = ((batch / 255) * 2) - 1
-
-        # Only support uniform sampling
-        t = th.randint(self.diffusion.n_timesteps, (N,)).to(device=batch.device)
-
-        x_0 = batch
-        noise = th.randn_like(x_0)
-        x_t = self.diffusion.q_sample(x_0, t, noise)
-        model_out = self.model(batch, t)
-        d = dict(x_0=x_0, x_t=x_t, noise=noise, model_out=model_out, t=t)
-        return SimpleNamespace(**d)
-
-    def loss(self, out, micro_batch):
-        mse_loss, vb_loss = self.diffusion.training_losses(
-            out.model_out, x_0=out.x_0, x_t=out.x_t, t=out.t, noise=out.noise
-        )
-        return th.mean(mse_loss), th.mean(vb_loss)
-        #print(mse_loss.shape, vb_loss.shape)
-        # TODO(composer needs to fix this)
-        # self.logger.data_batch({"mse_loss": mse_loss, "vb_loss": vb_loss})
-        return mse_loss, vb_loss
-
+from openai_iddpm import OpenAIIDDPM, TrainerConfig as OpenAITrainerConfig
+from my_iddpm import TrainerConfig, IDDPM
 
 # def scan_samples(model: ComposerModel, dl):
 #     def unnormalize(x):
@@ -122,32 +26,17 @@ class IDDPM(ComposerModel):
 #                 torchvision.io.write_png(noised_img, str(dir / f"noised_{t}.png"))
 
 MODE = "overfit"
+MODEL = "openai"
+
 
 def run():
-    config = TrainerConfig.create("./config/basic.yaml", None, cli_args=False)
-    unet, diffusion = config.initialize_object()
-    iddpm = IDDPM(unet, diffusion)
+    config_klass = OpenAITrainerConfig if MODEL == "openai" else TrainerConfig
 
-    def make_trainer(train_dl, grad_accum, lr=1e-4, duration='1000ep'):
-        trainer = Trainer(
-            model=iddpm,
-            train_dataloader=train_dl,
-            eval_dataloader=None,
-            schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="200ba", t_max="1dur")],
-            # default learning rate used by [0]
-            optimizers=[DecoupledAdamW(iddpm.parameters(), lr=lr, betas=(0.9, 0.95))],
-            max_duration=duration,
-            device="gpu",
-            precision="fp32",
-            grad_accum=grad_accum,
-            loggers=[
-                FileLogger(),
-                # don't save checkpoints to WandB
-                WandBLogger(log_artifacts=False),
-            ],
-            callbacks=[LRMonitor(), SpeedMonitor(window_size=10), CheckpointSaver()],
-        )
-        return trainer
+    config = config_klass.create("./config/openai_fixed_variance.yaml", None, cli_args=False)
+    unet, diffusion = config.initialize_object()
+
+    iddpm_klass = OpenAIIDDPM if MODEL == "openai" else IDDPM
+    iddpm = iddpm_klass(unet, diffusion)
 
     if MODE == "scan_samples":
         raise Exception("unsupported")
@@ -156,7 +45,7 @@ def run():
         batches, batch_size = 1, 32
         micro_batch_size = batch_size // 2
         dl = overfit_dataloader(batches, batch_size, "./data/parquetx64")
-        trainer = make_trainer(dl, batch_size // micro_batch_size, lr=1e-4)
+        trainer = make_trainer(iddpm, dl, batch_size // micro_batch_size, lr=1e-4)
         trainer.fit()
     elif MODE == "train":
         batch_size = 1
@@ -164,6 +53,7 @@ def run():
         train_dl = dataloader(ds, batch_size)
         trainer = make_trainer(dl, batch_size, lr=1e-4)
         trainer.fit()
+
 
 if __name__ == "__main__":
     run()

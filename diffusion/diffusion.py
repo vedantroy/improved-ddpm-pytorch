@@ -72,6 +72,7 @@ def for_timesteps(a, t, broadcast_to):
 def f32(x):
     return x.to(th.float32)
 
+
 class GaussianDiffusion(ABC):
     def __init__(self, betas):
         self.n_timesteps = betas.shape[0]

@@ -9,12 +9,15 @@ import pyarrow.parquet as pq
 
 from utils import load_tensor
 
+
 def identity(x):
     return x
+
 
 def print_identity(x):
     print(x)
     return x
+
 
 def load_parquet(path):
     table = pq.read_table(path)
@@ -22,13 +25,14 @@ def load_parquet(path):
     imgs = [load_tensor(img.as_py()) for img in imgs]
     return imgs
 
+
 def overfit_dataloader(num_batches, batch_size, dir):
     # Notes
     # 1. This dataloader only works w/ parquet files
     # on the local file system
     # 2. We implicitly rely on
     # FSSpecFileLister to be deterministic
-    # 3. Using print(item[indexes]) inside of the dataloader 
+    # 3. Using print(item[indexes]) inside of the dataloader
     # loop, we see the same samples are printed everytime
     datapipe = dp.iter.FSSpecFileLister(dir)
     datapipe = datapipe.map(load_parquet)
@@ -40,4 +44,5 @@ def overfit_dataloader(num_batches, batch_size, dir):
     # that are smaller than batch_size, which will break grad_accum
     return DataLoader(datapipe, batch_size=batch_size, num_workers=1)
 
-#def dataloader(dir)
+
+# def dataloader(dir)

@@ -1,0 +1,11 @@
+unet:
+  in_channels: 3
+  out_channels: 3
+  model_channels: 128
+  channel_mult: [1, 2, 3, 4]
+  layer_attn: [false, false, true, true]
+  res_blocks: 3
+  attention_heads: 4
+diffusion:
+  schedule: cosine
+  steps: 1000

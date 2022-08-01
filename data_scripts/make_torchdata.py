@@ -18,8 +18,10 @@ from torch.utils.data import DataLoader
 def load_img(x):
     return torchvision.io.read_image(x)
 
+
 def resize_img(x):
     return TVF.resize(x, (64, 64))
+
 
 def save_tensor(t, shape):
     assert t.dtype == th.uint8
