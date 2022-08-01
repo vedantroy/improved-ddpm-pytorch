@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from composer import ComposerModel
 import yahp as hp
 from typing import List
+from diffusion_wrapper import WrappedOpenAIGaussianDiffusion
+from tests.openai_code.unet import UNetModel
 from unet.unet import UNet
 from diffusion.diffusion import GaussianDiffusion, cosine_betas
 
@@ -22,15 +24,34 @@ class UNetParams(hp.Hparams):
     attention_heads: int = hp.required("# attention heads")
 
     def initialize_object(self):
-        return UNet(
+        return UNetModel(
             in_channels=self.in_channels,
-            out_channels=self.out_channels,
             model_channels=self.model_channels,
-            channel_mult=self.channel_mult,
-            layer_attn=self.layer_attn,
+            out_channels=self.out_channels,
             num_res_blocks=self.res_blocks,
+            attention_resolutions=(16, 8),
+            dropout=0,
+            channel_mult=self.channel_mult,
+            conv_resample=True,
+            dims=2,
+            num_classes=None,
+            use_checkpoint=False,
             num_heads=self.attention_heads,
+            num_heads_upsample=-1,
+            use_scale_shift_norm=True,
         )
+
+
+    # def initialize_object(self):
+    #     return UNet(
+    #         in_channels=self.in_channels,
+    #         out_channels=self.out_channels,
+    #         model_channels=self.model_channels,
+    #         channel_mult=self.channel_mult,
+    #         layer_attn=self.layer_attn,
+    #         num_res_blocks=self.res_blocks,
+    #         num_heads=self.attention_heads,
+    #     )
 
 
 @dataclass
@@ -41,6 +62,7 @@ class DiffusionParams(hp.Hparams):
     def initialize_object(self):
         assert self.schedule == "cosine", "Only cosine schedule is supported"
         betas = cosine_betas(self.steps)
+        return WrappedOpenAIGaussianDiffusion(betas)
         return GaussianDiffusion(betas)
 
 
@@ -80,4 +102,5 @@ class IDDPM(ComposerModel):
         mse_loss, vb_loss = self.diffusion.training_losses(
             out.model_out, x_0=out.x_0, x_t=out.x_t, t=out.t, noise=out.noise
         )
-        return th.mean(mse_loss), th.mean(vb_loss)
+        return th.mean(mse_loss)
+        # return th.mean(mse_loss), th.mean(vb_loss)

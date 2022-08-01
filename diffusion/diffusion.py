@@ -201,8 +201,12 @@ class GaussianDiffusion(ABC):
         """
         pass
 
+    # @abstractmethod
+    # def training_losses_from_output(self, model_output, *, x_0, x_t, t, noise):
+    #     pass
+
     @abstractmethod
-    def training_losses(self, model_output, *, x_0, x_t, t, noise):
+    def training_losses(self, model, x_0, t):
         pass
 
 
@@ -250,45 +254,60 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
         pred_log_var = self.model_v_to_log_variance(model_v, t)
         return pred_mean, pred_log_var
 
-    def training_losses(self, model_output, *, x_0, x_t, t, noise):
-        C = x_0.shape[1]
+    def training_losses(self, model, x_0, t):
+        raise Exception("not implemented")
 
-        # model_eps: the model is predicting the noise
-        # model_v:
-        # > our model outputs a vector `v` [...] and we turn this
-        # > output into variances
-        # from [0]
-        model_eps, model_v = rearrange(
-            model_output, "B (split C) ... -> split B C ...", split=2, C=C
-        )
+    # def training_losses_from_output(self, model_output, *, x_0, x_t, t, noise):
+    #   C = x_0.shape[1]
+
+    #   # model_eps: the model is predicting the noise
+    #   # model_v:
+    #   # > our model outputs a vector `v` [...] and we turn this
+    #   # > output into variances
+    #   # from [0]
+    #   model_eps, model_v = rearrange(
+    #       model_output, "B (split C) ... -> split B C ...", split=2, C=C
+    #   )
+    #   mse_loss = mean_flat((noise - model_eps) ** 2)
+
+    #   true_mean = self.q_posterior_mean(x_0, x_t, t)
+    #   true_log_var_clipped = for_timesteps(
+    #       self.posterior_log_variance_clipped, t, x_t
+    #   )
+
+    #   pred_mean, pred_log_var = self.p_mean_variance(
+    #       x_t, t, model_v, model_eps, threshold=False
+    #   )
+
+    #   # > Along this same line of reasoning,
+    #   # > we also apply a stop-gradient to the µθ(xt, t) output for the
+    #   # > L_vlb term. This way, Lvlb can guide Σθ(xt, t) while L_simple
+    #   # > is still the main source of influence over µθ(xt, t)
+    #   # from [0]
+    #   frozen_mean = true_mean.detach()
+    #   vb_loss = self.vb_loss(
+    #       x_0=x_0,
+    #       true_mean=frozen_mean,
+    #       true_log_var=true_log_var_clipped,
+    #       pred_mean=pred_mean,
+    #       pred_log_var=pred_log_var,
+    #       t=t,
+    #   )
+
+    #   # > For our experiments, we set λ = 0.001 to prevent L_vlb from
+    #   # > overwhelming L_simple
+    #   # from [0]
+    #   vb_loss *= self.n_timesteps / 1000.0
+    #   return mse_loss, vb_loss
+
+class FixedVarianceGaussianDiffusion(GaussianDiffusion):
+    def p_mean_variance(self, x_t, model_eps, threshold):
+        pass
+
+    def training_losses(self, model, x_0, t):
+        noise = th.randn_like(x_0)
+        x_t = self.q_sample(x_0, t, noise=noise)
+
+        model_eps = model(x_t, t)
         mse_loss = mean_flat((noise - model_eps) ** 2)
-
-        true_mean = self.q_posterior_mean(x_0, x_t, t)
-        true_log_var_clipped = for_timesteps(
-            self.posterior_log_variance_clipped, t, x_t
-        )
-
-        pred_mean, pred_log_var = self.p_mean_variance(
-            x_t, t, model_v, model_eps, threshold=False
-        )
-
-        # > Along this same line of reasoning,
-        # > we also apply a stop-gradient to the µθ(xt, t) output for the
-        # > L_vlb term. This way, Lvlb can guide Σθ(xt, t) while L_simple
-        # > is still the main source of influence over µθ(xt, t)
-        # from [0]
-        frozen_mean = true_mean.detach()
-        vb_loss = self.vb_loss(
-            x_0=x_0,
-            true_mean=frozen_mean,
-            true_log_var=true_log_var_clipped,
-            pred_mean=pred_mean,
-            pred_log_var=pred_log_var,
-            t=t,
-        )
-
-        # > For our experiments, we set λ = 0.001 to prevent L_vlb from
-        # > overwhelming L_simple
-        # from [0]
-        vb_loss *= self.n_timesteps / 1000.0
-        return mse_loss, vb_loss
+        return mse_loss

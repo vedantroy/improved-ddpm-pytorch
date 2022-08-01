@@ -10,10 +10,28 @@ from tests.openai_code.gaussian_diffusion import (
     LossType,
 )
 from tests.openai_code.unet import UNetModel
-from diffusion.diffusion import cosine_betas
+from diffusion.diffusion import FixedVarianceGaussianDiffusion, cosine_betas
+from diffusion_wrapper import WrappedOpenAIGaussianDiffusion
 from unet.unet import UNet
 
 from typing import List
+
+#@dataclass
+#class DiffusionParams(hp.Hparams):
+#    steps: int = hp.required("# diffusion steps")
+#    schedule: str = hp.required("diffusion schedule")
+#
+#    def initialize_object(self):
+#        assert self.schedule == "cosine", "Only cosine schedule is supported"
+#        # Using my beta values instead of OpenAI's
+#        betas = cosine_betas(self.steps)
+#        return GaussianDiffusion(
+#            betas=betas,
+#            model_mean_type=ModelMeanType.EPSILON,
+#            model_var_type=ModelVarType.FIXED_SMALL,
+#            loss_type=LossType.MSE,
+#            rescale_timesteps=True
+#        )
 
 @dataclass
 class DiffusionParams(hp.Hparams):
@@ -22,16 +40,10 @@ class DiffusionParams(hp.Hparams):
 
     def initialize_object(self):
         assert self.schedule == "cosine", "Only cosine schedule is supported"
-        # Using my beta values instead of OpenAI's
         betas = cosine_betas(self.steps)
-        return GaussianDiffusion(
-            betas=betas,
-            model_mean_type=ModelMeanType.EPSILON,
-            model_var_type=ModelVarType.FIXED_SMALL,
-            loss_type=LossType.MSE,
-            rescale_timesteps=True
-        )
-
+        return FixedVarianceGaussianDiffusion(betas)
+        #return WrappedOpenAIGaussianDiffusion(betas)
+        #return GaussianDiffusion(betas)
     
 @dataclass
 class UNetParams(hp.Hparams):
@@ -93,16 +105,25 @@ class OpenAIIDDPM(ComposerModel):
         batch = ((batch / 255) * 2) - 1
 
         # Only support uniform sampling
-        t = th.randint(self.diffusion.num_timesteps, (N,)).to(device=batch.device)
+        t = th.randint(self.diffusion.n_timesteps, (N,)).to(device=batch.device)
+
+        # x_0 = batch
+        # d = dict(x_0=x_0, t=t)
+        # return SimpleNamespace(**d)
 
         x_0 = batch
         d = dict(x_0=x_0, t=t)
         return SimpleNamespace(**d)
 
     def loss(self, out, micro_batch):
-        losses = self.diffusion.training_losses(model=self.model, x_start=out.x_0, t=out.t)
-        assert (losses["loss"] == losses["mse"]).all()
-        return th.mean(losses["loss"])
+        # losses = self.diffusion.training_losses(model=self.model, x_start=out.x_0, t=out.t)
+        # assert (losses["loss"] == losses["mse"]).all()
+        # return th.mean(losses["loss"])
+
+        mse_loss  = self.diffusion.training_losses(
+            self.model, x_0=out.x_0, t=out.t
+        )
+        return th.mean(mse_loss)
 
 def manual_train(dl, diffusion, unet):
     from torch.optim.lr_scheduler import CosineAnnealingLR

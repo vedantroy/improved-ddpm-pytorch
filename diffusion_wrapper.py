@@ -14,8 +14,10 @@ class WrappedOpenAIGaussianDiffusion:
             model_mean_type=ModelMeanType.EPSILON,
             model_var_type=ModelVarType.FIXED_SMALL,
             loss_type=LossType.MSE,
+            rescale_timesteps=True
         )
         self.n_timesteps = self.diffusion.num_timesteps
+        self.num_timesteps = self.diffusion.num_timesteps
 
     def q_sample(self, x_0, t, noise):
         return self.diffusion.q_sample(x_0, t, noise)

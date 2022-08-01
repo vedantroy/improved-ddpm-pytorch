@@ -14,8 +14,8 @@ def make_trainer(model, train_dl, grad_accum, lr=1e-4, duration="1000ep"):
         model=model,
         train_dataloader=train_dl,
         eval_dataloader=None,
-        #schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="1ba", t_max="1dur")],
-        schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="10ba", t_max="1dur")],
+        schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="1ba", t_max="100ba")],
+        #schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="10ba", t_max="1dur")],
         # schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="200ba", t_max="1dur")],
         # default learning rate used by [0]
         optimizers=[AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95))],

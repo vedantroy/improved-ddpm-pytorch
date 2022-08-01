@@ -39,7 +39,9 @@ def overfit_dataloader(num_batches, batch_size, dir):
     datapipe = datapipe.flatmap(identity)
     datapipe = datapipe.header(num_batches * batch_size)
     datapipe = datapipe.shuffle()
-    datapipe = datapipe.cycle()
+    #datapipe = datapipe.cycle(1_000)
+    datapipe = datapipe.cycle(1_000)
+    # datapipe = datapipe.cycle()
     datapipe = datapipe.sharding_filter()
     # We want no parallelism b/c this might lead to batches
     # that are smaller than batch_size, which will break grad_accum
