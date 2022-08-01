@@ -14,7 +14,7 @@ def make_trainer(model, train_dl, grad_accum, lr=1e-4, duration="1000ep"):
         model=model,
         train_dataloader=train_dl,
         eval_dataloader=None,
-        # schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="1ba", t_max="100ba")],
+        schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="1000ba", t_max="10000ba")],
         # default learning rate used by [0]
         optimizers=[AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95))],
         max_duration=duration,
@@ -29,8 +29,8 @@ def make_trainer(model, train_dl, grad_accum, lr=1e-4, duration="1000ep"):
         callbacks=[
             LRMonitor(),
             SpeedMonitor(window_size=10),
-            CheckpointSaver(),
-            DiffusionMonitor(interval="8ba"),
+            CheckpointSaver(save_interval="10000ba"),
+            DiffusionMonitor(interval="500ba"),
         ],
     )
     return trainer

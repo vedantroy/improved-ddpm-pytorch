@@ -1,5 +1,5 @@
 from trainer import make_trainer
-from dataloaders import overfit_dataloader
+from dataloaders import dataloader, overfit_dataloader
 from iddpm import TrainerConfig, IDDPM
 
 # def scan_samples(model: ComposerModel, dl):
@@ -24,7 +24,7 @@ from iddpm import TrainerConfig, IDDPM
 #                 torchvision.io.write_png(img, str(dir / f"original_{t}.png"))
 #                 torchvision.io.write_png(noised_img, str(dir / f"noised_{t}.png"))
 
-MODE = "overfit"
+MODE = "train"
 
 
 def run():
@@ -45,10 +45,12 @@ def run():
         )
         trainer.fit()
     elif MODE == "train":
-        batch_size = 1
-        ds = dataset(batch_size, shuffle=True)
-        train_dl = dataloader(ds, batch_size)
-        trainer = make_trainer(dl, batch_size, lr=1e-4)
+        batch_size = 16
+        micro_batch_size = batch_size
+        dl = dataloader(batch_size, "./data/parquetx64")
+        trainer = make_trainer(
+            iddpm, dl, batch_size // micro_batch_size, lr=1e-4, duration="1000000ba"
+        )
         trainer.fit()
 
 
