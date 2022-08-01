@@ -159,11 +159,11 @@ class UNet(nn.Module):
             self._print_layer(l.fn, indent + 2)
         elif isinstance(l, ResNetBlock):
             self._print(
-                f"ResBlock(in={l.in_channels}, out={l.out_channels}, emb_channels={l.emb_channels})",
+                f"ResBlock(in={l.in_channels}, out={l.out_channels}, emb_channels={l.time_emb_channels})",
                 indent,
             )
         elif isinstance(l, AttentionBlock):
-            self._print(f"AttentionBlock(in={l.channels}, heads={l.num_heads})", indent)
+            self._print(f"AttentionBlock(in={l.channels}, heads={l.heads})", indent)
         elif isinstance(l, nn.Conv2d):
             self._print(f"Conv2d(in={l.in_channels}, out={l.out_channels})", indent)
         elif isinstance(l, Downsample):

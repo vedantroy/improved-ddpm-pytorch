@@ -304,8 +304,9 @@ class FixedVarianceGaussianDiffusion(GaussianDiffusion):
     def p_mean_variance(self, x_t, model_eps, threshold):
         pass
 
-    def training_losses(self, model, x_0, t):
-        noise = th.randn_like(x_0)
+    def training_losses(self, model, x_0, t, noise=None):
+        if noise is None:
+            noise = th.randn_like(x_0)
         x_t = self.q_sample(x_0, t, noise=noise)
 
         model_eps = model(x_t, t)
