@@ -10,6 +10,10 @@ from composer.core import State, Time
 from composer.loggers import Logger, WandBLogger, LogLevel
 
 
+def normalized_to_bytes(img):
+    return (((img + 1) / 2) * 255).to(th.uint8)
+
+
 class DiffusionMonitor(Callback):
     def __init__(self, interval: str):
         self.interval = Time.from_timestring(interval)
@@ -25,7 +29,7 @@ class DiffusionMonitor(Callback):
             ), f"Invalid output type: {type(outputs)}"
 
             x_0 = state.batch
-            x_t, t = outputs.x_t, outputs.t
+            x_t, t, x_0_pred = outputs.x_t, outputs.t, outputs.x_0_pred
 
             # x_0 = x_0[: self.to_display]
             # x_t = x_t[: self.to_display]
@@ -35,30 +39,39 @@ class DiffusionMonitor(Callback):
             x_0 = x_0[0]
             x_t = x_t[0]
             t = t[0]
+            x_0_pred = x_0_pred[0]
 
             assert x_0.dtype == th.uint8
             # TVF accepts byte tensors not [-1, 1] tensors
-            x_t = (((x_t + 1) / 2) * 255).to(th.uint8)
+            # x_t = (((x_t + 1) / 2) * 255).to(th.uint8)
+            x_t = normalized_to_bytes(x_t)
+            x_0_pred = normalized_to_bytes(x_0_pred)
             x_0_pil = TVF.to_pil_image(x_0)
             x_t_pil = TVF.to_pil_image(x_t)
+            x_0_pred_pil = TVF.to_pil_image(x_0_pred)
 
-            #key = self.key
-            #cur_batch = state.timestamp.get(self.interval.unit).value
-            #key = f"{key}_{cur_batch}"
-            #key = self.key
-            #table = make_table(x_0=x_0, x_t=x_t, t=t)
+            # key = self.key
+            # cur_batch = state.timestamp.get(self.interval.unit).value
+            # key = f"{key}_{cur_batch}"
+            # key = self.key
+            # table = make_table(x_0=x_0, x_t=x_t, t=t)
             for destination in ensure_tuple(logger.destinations):
                 if isinstance(destination, WandBLogger):
-                    destination.log_data(state, LogLevel.BATCH, {
-                        "prediction": {
-                            "x_0": wandb.Image(x_0_pil),
-                            "x_t": wandb.Image(x_t_pil),
-                            "t": t,
-                        }
-                    })
-                    #print("RUNNING LOG")
-                    #print(state.timestamp.get(self.interval.unit).value)
-                    #destination.log_data(state, LogLevel.BATCH, {key: table})
+                    destination.log_data(
+                        state,
+                        LogLevel.BATCH,
+                        {
+                            "prediction": {
+                                "x_0": wandb.Image(x_0_pil),
+                                "x_t": wandb.Image(x_t_pil),
+                                "x_0_pred": wandb.Image(x_0_pred_pil),
+                                "t": t,
+                            }
+                        },
+                    )
+                    # print("RUNNING LOG")
+                    # print(state.timestamp.get(self.interval.unit).value)
+                    # destination.log_data(state, LogLevel.BATCH, {key: table})
 
 
 def make_table(*, x_0, x_t, t):

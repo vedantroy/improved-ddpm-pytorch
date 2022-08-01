@@ -73,7 +73,15 @@ class IDDPM(ComposerModel):
         noise = th.randn_like(x_0)
         x_t = self.diffusion.q_sample(x_0, t, noise)
         model_out = self.model(x_t, t)
-        d = dict(noise=noise, model_out=model_out, x_t=x_t, t=t)
+        x_0_pred = self.diffusion.predict_x0_from_eps(x_t=x_t, t=t, eps=model_out)
+        d = dict(
+            noise=noise,
+            model_out=model_out,
+            # for logging
+            x_t=x_t,
+            t=t,
+            x_0_pred=x_0_pred,
+        )
         # TODO: Use NamedTuple
         return SimpleNamespace(**d)
 
