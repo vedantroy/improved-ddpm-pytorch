@@ -1,7 +1,6 @@
 from trainer import make_trainer
 from dataloaders import overfit_dataloader
-from openai_iddpm import OpenAIIDDPM, TrainerConfig as OpenAITrainerConfig, manual_train
-from my_iddpm import TrainerConfig, IDDPM
+from iddpm import TrainerConfig, IDDPM
 
 # def scan_samples(model: ComposerModel, dl):
 #     def unnormalize(x):
@@ -26,17 +25,12 @@ from my_iddpm import TrainerConfig, IDDPM
 #                 torchvision.io.write_png(noised_img, str(dir / f"noised_{t}.png"))
 
 MODE = "overfit"
-MODEL = "openai"
 
 
 def run():
-    config_klass = OpenAITrainerConfig if MODEL == "openai" else TrainerConfig
-
-    config = config_klass.create("./config/openai_fixed_variance.yaml", None, cli_args=False)
+    config = TrainerConfig.create("./config/fixed_variance.yaml", None, cli_args=False)
     unet, diffusion = config.initialize_object()
-
-    iddpm_klass = OpenAIIDDPM if MODEL == "openai" else IDDPM
-    iddpm = iddpm_klass(unet, diffusion)
+    iddpm = IDDPM(unet, diffusion)
 
 
     if MODE == "scan_samples":
@@ -47,7 +41,7 @@ def run():
         micro_batch_size = batch_size // 1
         dl = overfit_dataloader(batches, 16, "./data/parquetx64")
         #manual_train(dl, diffusion, unet)
-        trainer = make_trainer(iddpm, dl, batch_size // micro_batch_size, lr=1e-4)
+        trainer = make_trainer(iddpm, dl, batch_size // micro_batch_size, lr=1e-4, duration="1000ba")
         trainer.fit()
     elif MODE == "train":
         batch_size = 1

@@ -46,6 +46,3 @@ def overfit_dataloader(num_batches, batch_size, dir):
     # We want no parallelism b/c this might lead to batches
     # that are smaller than batch_size, which will break grad_accum
     return DataLoader(datapipe, batch_size=batch_size, num_workers=1)
-
-
-# def dataloader(dir)

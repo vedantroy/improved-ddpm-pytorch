@@ -206,7 +206,7 @@ class GaussianDiffusion(ABC):
     #     pass
 
     @abstractmethod
-    def training_losses(self, model, x_0, t):
+    def training_losses(self, *, model, x_0, t):
         pass
 
 
@@ -304,7 +304,10 @@ class FixedVarianceGaussianDiffusion(GaussianDiffusion):
     def p_mean_variance(self, x_t, model_eps, threshold):
         pass
 
-    def training_losses(self, model, x_0, t, noise=None):
+    def training_losses_with_model_output(self, *, model_output, noise):
+        return mean_flat((noise - model_output) ** 2)
+
+    def training_losses(self, *, model, x_0, t, noise=None):
         if noise is None:
             noise = th.randn_like(x_0)
         x_t = self.q_sample(x_0, t, noise=noise)
