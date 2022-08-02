@@ -360,10 +360,11 @@ class FixedVarianceGaussianDiffusion(GaussianDiffusion):
 
         model_output = model(x_t, t)
         x_0_pred = self.predict_x0_from_eps(x_t=x_t, t=t, eps=model_output)
+        x_0_pred = self.threshold(x_0_pred, threshold)
 
         model_mean = self.q_posterior_mean(x_0=x_0_pred, x_t=x_t, t=t)
-        model_mean = self.threshold(model_mean, threshold)
-        return PMeanVar(model_mean, model_variance, model_log_variance)
+        # model_mean = self.threshold(model_mean, threshold)
+        return PMeanVar(mean=model_mean, var=model_variance, log_var=model_log_variance)
 
     def training_losses_with_model_output(self, *, model_output, noise):
         return mean_flat((noise - model_output) ** 2)
