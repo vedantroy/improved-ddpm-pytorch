@@ -1,3 +1,8 @@
+from composer.core import Time
+from composer.optim.scheduler import (
+    CosineAnnealingWithWarmupScheduler,
+)
+
 from trainer import make_trainer
 from dataloaders import dataloader, overfit_dataloader
 from iddpm import TrainerConfig, IDDPM
@@ -32,6 +37,14 @@ def run():
     unet, diffusion = config.initialize_object()
     iddpm = IDDPM(unet, diffusion)
 
+    def intcast(x):
+        assert x.is_integer(), f"Invalid int: {x}"
+        return int(x)
+
+    def batches(batches_per_sec, secs):
+        y = batches_per_sec * secs
+        return intcast(y)
+
     if MODE == "scan_samples":
         raise Exception("unsupported")
         return
@@ -45,11 +58,31 @@ def run():
         )
         trainer.fit()
     elif MODE == "train":
-        batch_size = 16
-        micro_batch_size = batch_size
-        dl = dataloader(batch_size, "./data/parquetx64")
+        batch_size = 8
+        batches_per_sec = 4.5
+        target_time = 4 * 60 * 60
+        warmup = 500
+        total_batches = batches(batches_per_sec, target_time)
+
+        print(f"Total: {total_batches}")
+        print(f"Warmup: {warmup}")
+        t_max = (total_batches - warmup)
+        print(f"Remaining: {t_max}")
+        t_max *= 1.2
+        t_max = intcast(t_max)
+        print(f"t_max: {t_max}")
+
+
+        t_max = int(t_max)
+
+        dl = dataloader(batch_size, "~/parquetx64")
         trainer = make_trainer(
-            iddpm, dl, batch_size // micro_batch_size, lr=1e-4, duration="1000000ba"
+            model=iddpm,
+            train_dl=dl,
+            grad_accum=1,
+            lr=1e-4,
+            duration=Time.from_batch(total_batches),
+            schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup=Time.from_batch(warmup), t_max=Time.from_batch(t_max))]
         )
         trainer.fit()
 

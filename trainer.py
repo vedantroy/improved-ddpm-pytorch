@@ -1,20 +1,17 @@
 # composer's optimizer is buggy
 from torch.optim.adamw import AdamW
-from composer.optim.scheduler import (
-    CosineAnnealingWithWarmupScheduler,
-)
 from composer.loggers import WandBLogger, FileLogger
 from composer import Trainer
 from composer.callbacks import CheckpointSaver, LRMonitor, SpeedMonitor
 from callbacks import DiffusionMonitor
 
 
-def make_trainer(model, train_dl, grad_accum, lr=1e-4, duration="1000ep"):
+def make_trainer(*, model, train_dl, grad_accum, lr, duration, schedulers):
     trainer = Trainer(
         model=model,
         train_dataloader=train_dl,
         eval_dataloader=None,
-        schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup="1000ba", t_max="10000ba")],
+        schedulers=schedulers,
         # default learning rate used by [0]
         optimizers=[AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95))],
         max_duration=duration,
