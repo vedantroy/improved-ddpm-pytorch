@@ -103,7 +103,7 @@ def test_gaussian_diffusion_funcs():
     testing.assert_close(x_t, my_x_t)
 
     x_tm1, _, log_var = gd.q_posterior_mean_variance(x_0, x_t, t)
-    my_x_tm1 = my_gd.q_posterior_mean(x_0, x_t, t)
+    my_x_tm1 = my_gd.q_posterior_mean(x_0=x_0, x_t=x_t, t=t)
     my_log_var = for_timesteps(my_gd.posterior_log_variance_clipped, t, x_tm1)
 
     # my extract_for_timesteps method returns a different shape
@@ -159,7 +159,7 @@ def test_gaussian_diffusion_e2e():
     model = lambda *args, r=fake_output: r
     losses = gd.training_losses(model, x_0, t, noise=noise)
 
-    mse_loss = my_gd.training_losses(model, x_0, t, noise=noise)
+    mse_loss = my_gd.training_losses(model=model, x_0=x_0, t=t, noise=noise)
 
     testing.assert_close(losses["loss"], mse_loss)
     print("test_gaussian_diffusion_e2e passed")
