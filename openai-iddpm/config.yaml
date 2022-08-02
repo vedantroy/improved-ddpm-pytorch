@@ -1,0 +1,43 @@
+unet:
+  dims: 2
+  conv_resample: true
+  in_channels: 3
+  model_channels: 128
+  out_channels: 3
+  num_res_blocks: 3
+  attention_resolutions: [4, 8]
+  dropout: 0.0
+  channel_mult: [1, 2, 3, 4]
+  num_classes: null
+  use_checkpoint: false
+  num_heads: 4
+  num_heads_upsample: -1
+  use_scale_shift_norm: true
+spaced_diffusion:
+  steps: 1000
+  learn_sigma: false
+  sigma_small: false
+  noise_schedule: cosine
+  use_kl: false
+  predict_xstart: false
+  rescale_timesteps: true
+  rescale_learned_sigmas: true
+  timestep_respacing: ""
+data:
+  data_dir: cifar_train
+  batch_size: 2
+  image_size: 64
+  class_cond: false
+train:
+  lr: 1.0e-4
+  ema_rate: 0.9999
+  use_fp16: false
+  fp16_scale_growth: 0.001
+  weight_decay: 0.0
+  lr_anneal_steps: 0
+  schedule_sampler: uniform
+  microbatch: -1
+io:
+  log_interval: 10
+  save_interval: 200
+  resume_checkpoint: ""

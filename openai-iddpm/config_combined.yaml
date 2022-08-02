@@ -1,0 +1,27 @@
+# This config uses spaced diffusion from OpenAI
+# but my model to test whether my model is buggy or
+# whether my diffusion is buggy
+spaced_diffusion:
+  steps: 1000
+  learn_sigma: false
+  sigma_small: true
+  noise_schedule: cosine
+  use_kl: false
+  predict_xstart: false
+  rescale_timesteps: true
+  rescale_learned_sigmas: true
+  timestep_respacing: ""
+data:
+  image_size: 64
+  # these values are useless
+  data_dir: "a-value-that-does-not-matter"
+  batch_size: 2
+  class_cond: false
+unet:
+  in_channels: 3
+  out_channels: 3
+  model_channels: 128
+  channel_mult: [1, 2, 3, 4]
+  layer_attn: [false, false, true, true]
+  res_blocks: 3
+  attention_heads: 4
