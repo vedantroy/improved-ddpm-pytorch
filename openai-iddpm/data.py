@@ -5,12 +5,15 @@ import torch as th
 import torchdata.datapipes as dp
 import pyarrow.parquet as pq
 
+
 def load_tensor(bytes):
     buf = io.BytesIO(bytes)
     return th.load(buf)
 
+
 def identity(x):
     return x
+
 
 def load_parquet(path):
     table = pq.read_table(path)

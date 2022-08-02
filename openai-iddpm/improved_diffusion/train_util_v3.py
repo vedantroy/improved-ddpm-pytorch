@@ -24,7 +24,9 @@ class TrainLoop:
         schedule_sampler=None,
         weight_decay=0.0,
     ):
-        assert isinstance(schedule_sampler, UniformSampler), f"Simple trainer only supports UniformSampler" 
+        assert isinstance(
+            schedule_sampler, UniformSampler
+        ), f"Simple trainer only supports UniformSampler"
 
         self.model = model
         self.diffusion = diffusion
@@ -37,7 +39,7 @@ class TrainLoop:
         self.step = 0
         self.resume_step = 0
         # world_size is always 1
-        self.global_batch = self.batch_size # * dist.get_world_size()
+        self.global_batch = self.batch_size  # * dist.get_world_size()
 
         self.model_params = list(self.model.parameters())
         self.master_params = self.model_params
@@ -62,7 +64,7 @@ class TrainLoop:
         self.forward_backward(batch)
         self.optimize_normal()
         self.log_step()
-    
+
     def optimize_normal(self):
         self._log_grad_norm()
         self.opt.step()
@@ -83,15 +85,13 @@ class TrainLoop:
 
         losses = compute_losses()
         loss = (losses["loss"] * weights).mean()
-        log_loss_dict(
-            self.diffusion, t, {k: v * weights for k, v in losses.items()}
-        )
+        log_loss_dict(self.diffusion, t, {k: v * weights for k, v in losses.items()})
         loss.backward()
 
     def _log_grad_norm(self):
         sqsum = 0.0
         for p in self.master_params:
-            sqsum += (p.grad ** 2).sum().item()
+            sqsum += (p.grad**2).sum().item()
         logger.logkv_mean("grad_norm", np.sqrt(sqsum))
 
     def log_step(self):

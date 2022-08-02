@@ -40,7 +40,9 @@ class TrainLoop:
         assert use_fp16 == False, f"Simple trainer does not support FP16"
         assert lr_anneal_steps == 0, f"Simple trainer does not support lr annealing"
         assert resume_checkpoint == "", f"Simple trainer does not support resuming"
-        assert isinstance(schedule_sampler, UniformSampler), f"Simple trainer only supports UniformSampler" 
+        assert isinstance(
+            schedule_sampler, UniformSampler
+        ), f"Simple trainer only supports UniformSampler"
 
         self.model = model
         self.diffusion = diffusion
@@ -160,9 +162,8 @@ class TrainLoop:
     def _log_grad_norm(self):
         sqsum = 0.0
         for p in self.master_params:
-            sqsum += (p.grad ** 2).sum().item()
+            sqsum += (p.grad**2).sum().item()
         logger.logkv_mean("grad_norm", np.sqrt(sqsum))
-
 
     def log_step(self):
         logger.logkv("step", self.step + self.resume_step)
@@ -222,6 +223,7 @@ def parse_resume_step_from_filename(filename):
 
 def get_blob_logdir():
     return os.environ.get("DIFFUSION_BLOB_LOGDIR", logger.get_dir())
+
 
 def log_loss_dict(diffusion, ts, losses):
     for key, values in losses.items():

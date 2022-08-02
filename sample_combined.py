@@ -5,16 +5,33 @@ import torchvision
 import torch as th
 
 from iddpm import TrainerConfig, IDDPM
+from tests.openai_code.gaussian_diffusion import (
+    LossType,
+    ModelMeanType,
+    ModelVarType,
+    GaussianDiffusion,
+    get_named_beta_schedule,
+)
 
 
 def img_to_bytes(img):
     # TODO: Is the clamp necessary?
-    return (((img + 1) / 2) * 255).clamp(-1, 1).to(th.uint8)
+    return (((img + 1) / 2) * 255).clamp(0, 255).to(th.uint8)
 
 
 def run():
     config = TrainerConfig.create("./config/fixed_variance.yaml", None, cli_args=False)
     unet, diffusion = config.initialize_object()
+
+    betas = get_named_beta_schedule("cosine", 1000)
+    diffusion = GaussianDiffusion(
+        betas=betas,
+        model_mean_type=ModelMeanType.EPSILON,
+        model_var_type=ModelVarType.FIXED_SMALL,
+        loss_type=LossType.RESCALED_MSE,
+        rescale_timesteps=True,
+    )
+
     iddpm = IDDPM(unet, diffusion)
 
     OUT_PATH = "./samples"
@@ -38,7 +55,8 @@ def run():
                 model=iddpm.model,
                 noise=None,
                 shape=(N_SAMPLES, 3, 64, 64),
-                threshold="static",
+                clip_denoised=True,
+                # threshold="static",
                 device=device,
             ),
             total=total,
@@ -46,6 +64,7 @@ def run():
     ):
         step_path = out_path / f"{idx:04d}"
         step_path.mkdir()
+        img = img["sample"]
 
         for sample_idx, sample in enumerate(img):
             torchvision.io.write_png(

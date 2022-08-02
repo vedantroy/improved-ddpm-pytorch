@@ -248,21 +248,33 @@ def create_gaussian_diffusion(
         loss_type = gd.LossType.MSE
     if not timestep_respacing:
         timestep_respacing = [steps]
+
+    model_mean_type = (
+        gd.ModelMeanType.EPSILON if not predict_xstart else gd.ModelMeanType.START_X
+    )
+    model_var_type = (
+        (
+            gd.ModelVarType.FIXED_LARGE
+            if not sigma_small
+            else gd.ModelVarType.FIXED_SMALL
+        )
+        if not learn_sigma
+        else gd.ModelVarType.LEARNED_RANGE
+    )
+
+    if True:
+        print(f"Returning SpacedDiffusion")
+        print(f"steps, len(betas): {steps}, {len(betas)}")
+        print(f"model_mean_type: {model_mean_type}")
+        print(f"model_var_type: {model_var_type}")
+        print(f"loss_type: {loss_type}")
+        print(f"rescale_timesteps: {rescale_timesteps}")
+
     return SpacedDiffusion(
         use_timesteps=space_timesteps(steps, timestep_respacing),
         betas=betas,
-        model_mean_type=(
-            gd.ModelMeanType.EPSILON if not predict_xstart else gd.ModelMeanType.START_X
-        ),
-        model_var_type=(
-            (
-                gd.ModelVarType.FIXED_LARGE
-                if not sigma_small
-                else gd.ModelVarType.FIXED_SMALL
-            )
-            if not learn_sigma
-            else gd.ModelVarType.LEARNED_RANGE
-        ),
+        model_mean_type=model_mean_type,
+        model_var_type=model_var_type,
         loss_type=loss_type,
         rescale_timesteps=rescale_timesteps,
     )

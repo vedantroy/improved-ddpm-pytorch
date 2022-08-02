@@ -11,8 +11,10 @@ import math
 from .losses import discretized_gaussian_log_likelihood, normal_kl
 from .nn import mean_flat
 
+
 def xor(a, b):
     return bool(a) + bool(b) == 1
+
 
 # Simple-ish Gaussian Diffusion
 # Notes:
@@ -30,6 +32,7 @@ def xor(a, b):
 # (this would make sense b/c if the 1st beta is 0, then there would be no variance)
 
 PMeanVar = namedtuple("PMeanVar", ["mean", "var", "log_var"])
+
 
 def cosine_betas(timesteps, s=0.008, max_beta=0.999):
     """
@@ -226,12 +229,7 @@ class GaussianDiffusion(ABC):
         pass
 
     def p_sample(self, *, model, x_t, t, threshold):
-        out = self.p_mean_variance(
-            model=model,
-            x_t=x_t,
-            t=t,
-            threshold=threshold
-        )
+        out = self.p_mean_variance(model=model, x_t=x_t, t=t, threshold=threshold)
 
         N = t.shape[0]
         noise = th.randn_like(x_t)
@@ -241,7 +239,9 @@ class GaussianDiffusion(ABC):
         return sample
 
     def p_sample_loop_progressive(self, *, model, noise, shape, threshold, device):
-        assert xor(noise, shape), f"Either noise or shape must be specified, but not both or neither"
+        assert xor(
+            noise, shape
+        ), f"Either noise or shape must be specified, but not both or neither"
         indices = list(range(self.n_timesteps))[::-1]
 
         img = N = None
@@ -254,12 +254,7 @@ class GaussianDiffusion(ABC):
         for i in indices:
             t = th.tensor([i] * N, device=device)
             with th.no_grad():
-                img = self.p_sample(
-                    model=model,
-                    x_t=img,
-                    t=t,
-                    threshold=threshold
-                )
+                img = self.p_sample(model=model, x_t=img, t=t, threshold=threshold)
                 yield img
 
 

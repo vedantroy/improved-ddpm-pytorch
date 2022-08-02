@@ -34,12 +34,11 @@ class CombinedHParams(hp.Hparams):
     def initialize_object(self):
         return self.unet.initialize_object(), self.spaced_diffusion.initialize_object()
 
+
 def main():
     args = create_argparser().parse_args()
-    config = CombinedHParams.create(
-        "./config_combined.yaml", None, cli_args=False
-    )
-    model, diffusion  = config.initialize_object()
+    config = CombinedHParams.create("./config_combined.yaml", None, cli_args=False)
+    model, diffusion = config.initialize_object()
     iddpm = StrippedIDDPM(model)
     state = th.load(args.model_path)["state"]["model"]
     iddpm.load_state_dict(state)
@@ -54,11 +53,13 @@ def main():
     model.to(dist_util.dev())
     model.eval()
 
-    logger.log(f"sampling {args.num_samples} images with {args.batch_size} samples per batch")
+    logger.log(
+        f"sampling {args.num_samples} images with {args.batch_size} samples per batch"
+    )
     all_images = []
     all_labels = []
     while len(all_images) * args.batch_size < args.num_samples:
-        model_kwargs = { }
+        model_kwargs = {}
         sample_fn = diffusion.p_sample_loop
         sample = sample_fn(
             model,

@@ -8,6 +8,7 @@ from improved_diffusion.script_util import (
 )
 from improved_diffusion.unet import UNetModel
 
+
 @dataclass
 class UNetHParams(hp.Hparams):
     in_channels: int = hp.required("channels in the input tensor")
@@ -67,6 +68,7 @@ class DataHParams(hp.Hparams):
     def initialize_object(self):
         return load_data(**self.__dict__)
 
+
 @dataclass
 class TrainHParams(hp.Hparams):
     lr: float = hp.required("lr")
@@ -78,11 +80,13 @@ class TrainHParams(hp.Hparams):
     schedule_sampler: str = hp.required("schedule_sampler")
     microbatch: int = hp.required("microbatch")
 
+
 @dataclass
 class IoHParams(hp.Hparams):
     log_interval: int = hp.required("log_interval")
     save_interval: int = hp.required("save_interval")
     resume_checkpoint: str = hp.required("resume_checkpoint")
+
 
 @dataclass
 class TrainingHParams(hp.Hparams):
@@ -95,7 +99,10 @@ class TrainingHParams(hp.Hparams):
     io: IoHParams = hp.required("the io parameters")
 
     def initialize_object(self, use_custom_data=False):
-        unet, diffusion = self.unet.initialize_object(), self.spaced_diffusion.initialize_object()
+        unet, diffusion = (
+            self.unet.initialize_object(),
+            self.spaced_diffusion.initialize_object(),
+        )
         if not use_custom_data:
             return (
                 unet,

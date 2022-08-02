@@ -23,9 +23,7 @@ from params import TrainingHParams
 
 def main():
     args = create_argparser().parse_args()
-    config = TrainingHParams.create(
-        "config.yaml", None, cli_args=False
-    )
+    config = TrainingHParams.create("config.yaml", None, cli_args=False)
     model, diffusion, _ = config.initialize_object()
     print(args)
 
@@ -44,11 +42,13 @@ def main():
     model.to(dist_util.dev())
     model.eval()
 
-    logger.log(f"sampling {args.num_samples} images with {args.batch_size} samples per batch")
+    logger.log(
+        f"sampling {args.num_samples} images with {args.batch_size} samples per batch"
+    )
     all_images = []
     all_labels = []
     while len(all_images) * args.batch_size < args.num_samples:
-        model_kwargs = { }
+        model_kwargs = {}
         sample_fn = diffusion.p_sample_loop
         sample = sample_fn(
             model,
