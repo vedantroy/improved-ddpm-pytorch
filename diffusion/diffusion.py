@@ -359,8 +359,8 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
 class FixedVarianceGaussianDiffusion(GaussianDiffusion):
     def p_mean_variance(self, *, model, x_t, t, threshold):
         model_variance, model_log_variance = (
-            for_timesteps(self.posterior_variance),
-            for_timesteps(self.posterior_log_variance_clipped),
+            for_timesteps(self.posterior_variance, t, x_t),
+            for_timesteps(self.posterior_log_variance_clipped, t, x_t),
         )
 
         model_output = model(x_t, t)
