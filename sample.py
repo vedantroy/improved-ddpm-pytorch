@@ -8,7 +8,7 @@ from iddpm import TrainerConfig, IDDPM
 
 def img_to_bytes(img):
     # TODO: Is the clamp necessary?
-    return (((img + 1) / 2) * 255).clamp(-1, 1).to(th.uint8)
+    return (((img + 1) / 2) * 255).clamp(0, 255).to(th.uint8)
 
 def run():
     config = TrainerConfig.create("./config/fixed_variance.yaml", None, cli_args=False)
