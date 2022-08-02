@@ -49,3 +49,7 @@ This repository is for my personal use. But, there are a few nice things you mig
 - Same goes for the UNet
 - (TODO), I will port some comments from my ml-experiments repository to the UNet, so you can see why certain things are done
 - Usage of MosaicML's trainer means you don't get bogged down by FP16/checkpointing/logging & can focus on the important stuff
+
+## Credit
+- The "losses.py" and "nn.py" file inside of the "diffusion" folder are copy-pasted from the OpenAI codebase. I haven't had time to re-implement them yet. 
+- The `for_timesteps` function is heavily based off of a function in lucidrain's imagen-pytorch repository.
