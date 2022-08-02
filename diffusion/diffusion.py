@@ -230,7 +230,7 @@ class GaussianDiffusion(ABC):
             model=model,
             x_t=x_t,
             t=t,
-            threshold="static"
+            threshold=threshold
         )
 
         N = t.shape[0]
