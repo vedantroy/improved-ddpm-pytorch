@@ -1,3 +1,5 @@
+from collections import namedtuple
+from types import SimpleNamespace
 from abc import ABC, abstractmethod
 
 import torch as th
@@ -8,6 +10,9 @@ import math
 # TODO: Re-implement these
 from .losses import discretized_gaussian_log_likelihood, normal_kl
 from .nn import mean_flat
+
+def xor(a, b):
+    return bool(a) + bool(b) == 1
 
 # Simple-ish Gaussian Diffusion
 # Notes:
@@ -24,6 +29,7 @@ from .nn import mean_flat
 # are the betas indexed s.t betas[0] == represents the image before any diffusion process?
 # (this would make sense b/c if the 1st beta is 0, then there would be no variance)
 
+PMeanVar = namedtuple("PMeanVar", ["mean", "var", "log_var"])
 
 def cosine_betas(timesteps, s=0.008, max_beta=0.999):
     """
@@ -105,6 +111,8 @@ class GaussianDiffusion(ABC):
             # clipped to avoid log(0) == -inf b/c posterior variance is 0
             # at start of diffusion chain
             assert alphas_cumprod_prev[0] == 1 and posterior_variance[0] == 0
+            self.posterior_variance = f32(posterior_variance)
+            check(self.posterior_variance)
             self.posterior_log_variance_clipped = f32(
                 th.log(
                     F.pad(posterior_variance[1:], (1, 0), value=posterior_variance[1])
@@ -140,7 +148,7 @@ class GaussianDiffusion(ABC):
         check(self.log_betas)
 
     # (12) in [0]
-    def q_posterior_mean(self, x_start, x_t, t):
+    def q_posterior_mean(self, *, x_0, x_t, t):
         """
         Calculate the mean of the normal distribution q(x_{t-1}|x_t, x_0)
         From (12 in [0])
@@ -153,10 +161,10 @@ class GaussianDiffusion(ABC):
         :param t: The current timestep
         """
         mean = (
-            for_timesteps(self.posterior_mean_coef_x_0, t, x_start) * x_start
-            + for_timesteps(self.posterior_mean_coef_x_t, t, x_start) * x_t
+            for_timesteps(self.posterior_mean_coef_x_0, t, x_0) * x_0
+            + for_timesteps(self.posterior_mean_coef_x_t, t, x_0) * x_t
         )
-        assert mean.shape == x_start.shape and x_start.shape == x_t.shape
+        assert mean.shape == x_0.shape and x_0.shape == x_t.shape
         return mean
 
     def q_sample(self, x_0, t, noise):
@@ -180,7 +188,7 @@ class GaussianDiffusion(ABC):
         assert mean.shape[0] == N and var.shape[0] == N
         return mean + var * noise
 
-    def predict_x0_from_eps(self, x_t, t, eps):
+    def predict_x0_from_eps(self, *, x_t, t, eps):
         """
         Predict x_0 given epsilon and x_t
         From re-arranging and simplifying (9 in [0])
@@ -193,8 +201,16 @@ class GaussianDiffusion(ABC):
             - for_timesteps(self.sqrt_recip_alphas_cumprod_minus1, t, x_t) * eps
         )
 
+    def threshold(self, x_t, threshold):
+        if threshold == None:
+            return x_t
+        elif threshold == "static":
+            return x_t.clamp(-1, 1)
+        elif threshold == "dynamic":
+            raise Exception("Not implemented")
+
     @abstractmethod
-    def p_mean_variance(self, *args, **kwargs):
+    def p_mean_variance(self, *, model, x_t, t, threshold) -> PMeanVar:
         """
         Get the model's predicted mean and variance for the distribution
         that predicts x_{t-1}
@@ -208,6 +224,43 @@ class GaussianDiffusion(ABC):
     @abstractmethod
     def training_losses(self, *, model, x_0, t):
         pass
+
+    def p_sample(self, *, model, x_t, t, threshold):
+        out = self.p_mean_variance(
+            model=model,
+            x_t=x_t,
+            t=t,
+            threshold="static"
+        )
+
+        N = t.shape[0]
+        noise = th.randn_like(x_t)
+        # no noise when t == 0
+        nonzero_mask = (t != 0).float().view(N, *([1] * (len(x_t.shape) - 1)))
+        sample = out.mean + nonzero_mask * th.exp(0.5 * out.log_var) * noise
+        return sample
+
+    def p_sample_loop_progressive(self, *, model, noise, shape, threshold, device):
+        assert xor(noise, shape), f"Either noise or shape must be specified, but not both or neither"
+        indices = list(range(self.n_timesteps))[::-1]
+
+        img = N = None
+        if noise:
+            img = noise
+        else:
+            img = th.randn(shape, device=device)
+        N = img.shape[0]
+
+        for i in indices:
+            t = th.tensor([i] * N, device=device)
+            with th.no_grad():
+                img = self.p_sample(
+                    model=model,
+                    x_t=img,
+                    t=t,
+                    threshold=threshold
+                )
+                yield img
 
 
 class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
@@ -246,11 +299,11 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
         - Use x_0 and x_t to predict the mean of q(x_{t-1}|x_t,x_0)
         - Turn the model's v vector into a variance
         """
-        pred_x_0 = self.predict_x0_from_eps(x_t, t, model_eps)
+        pred_x_0 = self.predict_x0_from_eps(x_t=x_t, t=t, eps=model_eps)
         if threshold:
             # Question: Why do we apply clamping before q_posterior?
             pred_x_0 = pred_x_0.clamp(-1, 1)
-        pred_mean = self.q_posterior_mean(pred_x_0, x_t, t)
+        pred_mean = self.q_posterior_mean(x_0=pred_x_0, x_t=x_t, t=t)
         pred_log_var = self.model_v_to_log_variance(model_v, t)
         return pred_mean, pred_log_var
 
@@ -275,6 +328,8 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
     #       self.posterior_log_variance_clipped, t, x_t
     #   )
 
+    #   TODO: I think there's a bug here
+    #   Need to freeze the mean *before* passing to self.p_mean_variance
     #   pred_mean, pred_log_var = self.p_mean_variance(
     #       x_t, t, model_v, model_eps, threshold=False
     #   )
@@ -302,8 +357,18 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
 
 
 class FixedVarianceGaussianDiffusion(GaussianDiffusion):
-    def p_mean_variance(self, x_t, model_eps, threshold):
-        pass
+    def p_mean_variance(self, *, model, x_t, t, threshold):
+        model_variance, model_log_variance = (
+            for_timesteps(self.posterior_variance),
+            for_timesteps(self.posterior_log_variance_clipped),
+        )
+
+        model_output = model(x_t, t)
+        x_0_pred = self.predict_x0_from_eps(x_t=x_t, t=t, eps=model_output)
+
+        model_mean = self.q_posterior_mean(x_0=x_0_pred, x_t=x_t, t=t)
+        model_mean = self.threshold(model_mean, threshold)
+        return PMeanVar(model_mean, model_variance, model_log_variance)
 
     def training_losses_with_model_output(self, *, model_output, noise):
         return mean_flat((noise - model_output) ** 2)

@@ -47,7 +47,6 @@ def run():
 
     if MODE == "scan_samples":
         raise Exception("unsupported")
-        return
     elif MODE == "overfit":
         batches, batch_size = 1, 2
         micro_batch_size = batch_size // 1
@@ -66,12 +65,11 @@ def run():
 
         print(f"Total: {total_batches}")
         print(f"Warmup: {warmup}")
-        t_max = (total_batches - warmup)
+        t_max = total_batches - warmup
         print(f"Remaining: {t_max}")
         t_max *= 1.2
         t_max = intcast(t_max)
         print(f"t_max: {t_max}")
-
 
         t_max = int(t_max)
 
@@ -82,7 +80,11 @@ def run():
             grad_accum=1,
             lr=1e-4,
             duration=Time.from_batch(total_batches),
-            schedulers=[CosineAnnealingWithWarmupScheduler(t_warmup=Time.from_batch(warmup), t_max=Time.from_batch(t_max))]
+            schedulers=[
+                CosineAnnealingWithWarmupScheduler(
+                    t_warmup=Time.from_batch(warmup), t_max=Time.from_batch(t_max)
+                )
+            ],
         )
         trainer.fit()
 
