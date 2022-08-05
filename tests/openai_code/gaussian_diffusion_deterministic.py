@@ -265,7 +265,9 @@ class GaussianDiffusion:
         model_output = model(x, self._scale_timesteps(t), **model_kwargs)
 
         model_variance = _extract_into_tensor(self.posterior_variance, t, x.shape)
-        model_log_variance = _extract_into_tensor(self.posterior_log_variance_clipped, t, x.shape)
+        model_log_variance = _extract_into_tensor(
+            self.posterior_log_variance_clipped, t, x.shape
+        )
 
         def process_xstart(x):
             if clip_denoised:
