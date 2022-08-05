@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 import pyarrow as pa
 import pyarrow.parquet as pq
 import torch as th
@@ -55,3 +56,21 @@ def dataloader(batch_size, dir):
     datapipe = datapipe.shuffle()
     datapipe = datapipe.sharding_filter()
     return DataLoader(datapipe, batch_size=batch_size, num_workers=8, drop_last=True)
+
+
+def train_val_loaders(batch_size, dir, val_batches, num_workers=8):
+    datapipe = dp.iter.FSSpecFileLister(dir)
+    datapipe = datapipe.map(load_parquet)
+    datapipe = datapipe.flatmap(identity)
+    val_samples = val_batches * batch_size
+    train_dp, val_dp = datapipe.fork(num_instances=2, buffer_size=val_samples)
+    val_dp = val_dp.header(val_samples)
+    dl_args = dict(
+        batch_size=batch_size,
+        num_workers=num_workers,
+        drop_last=True,
+    )
+    return SimpleNamespace(
+        train=DataLoader(train_dp.shuffle().sharding_filter(), **dl_args),
+        val=DataLoader(val_dp.sharding_filter(), **dl_args),
+    )

@@ -6,11 +6,12 @@ from composer.callbacks import CheckpointSaver, LRMonitor, SpeedMonitor
 from callbacks import DiffusionMonitor
 
 
-def make_trainer(*, model, train_dl, grad_accum, lr, duration, schedulers):
+def make_trainer(*, model, train_dl, eval_dl, eval_interval, grad_accum, lr, duration, schedulers):
     trainer = Trainer(
         model=model,
         train_dataloader=train_dl,
-        eval_dataloader=None,
+        eval_dataloader=eval_dl,
+        eval_interval=eval_interval,
         schedulers=schedulers,
         # default learning rate used by [0]
         optimizers=[AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95))],

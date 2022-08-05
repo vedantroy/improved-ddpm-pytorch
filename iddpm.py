@@ -91,3 +91,6 @@ class IDDPM(ComposerModel):
             noise=out.noise,
         )
         return th.mean(mse_loss)
+
+    def metrics(self, train):
+        pass
