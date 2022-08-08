@@ -158,12 +158,9 @@ def test_gaussian_diffusion_e2e():
     model = lambda *args, r=fake_output: r
     losses = gd.training_losses(model, x_0, t, noise=noise)
 
-    mse_loss = my_gd.training_losses_with_model_output(
-        model_output=fake_output, noise=noise
-    )
-    # mse_loss = my_gd.training_losses(model=model, x_0=x_0, t=t, noise=noise)
+    my_losses = my_gd.losses_training(model_output=fake_output, noise=noise)
 
-    testing.assert_close(losses["loss"], mse_loss)
+    testing.assert_close(losses["loss"], my_losses["mse"])
     print("test_gaussian_diffusion_e2e passed")
 
 
@@ -197,12 +194,12 @@ def test_gaussian_diffusion_learned_var_e2e():
     losses = gd.training_losses(model, x_0, t, noise=noise)
 
     x_t = my_gd.q_sample(x_0, t, noise)
-    my_losses = my_gd.training_losses_with_model_output(
+    my_losses = my_gd.losses_training(
         model_output=fake_output, x_0=x_0, x_t=x_t, t=t, noise=noise
     )
 
-    testing.assert_close(losses["mse"], my_losses.mse)
-    testing.assert_close(losses["vb"], my_losses.vb)
+    testing.assert_close(losses["mse"], my_losses["mse"])
+    testing.assert_close(losses["vb"], my_losses["vb"])
 
     print("test_gaussian_diffusion_learned_var_e2e passed")
 
