@@ -294,7 +294,7 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
 
         pred_mean = self.q_posterior_mean(x_0=pred_x_0, x_t=x_t, t=t)
         pred_log_var = self.model_v_to_log_variance(model_v, t)
-        return pred_mean, pred_log_var
+        return PMeanVar(mean=pred_mean, var=None, log_var=pred_log_var)
 
     def vb_loss(self, *, x_0, x_t, t, model):
         true_mean = self.q_posterior_mean(x_0=x_0, x_t=x_t, t=t)
@@ -313,7 +313,7 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
         # `th.where` selects from tensor 1 if cond is true and tensor 2 otherwise
         return th.where((t == 0), decoder_nll, kl)
 
-    def training_losses_with_model_output(self, *, model_output, x_0, x_t, t, noise):
+    def training_losses_with_model_output(self, *, model_output, noise, x_0, x_t, t):
         model_eps, model_v = self.get_eps_and_var(model_output, C=x_t.shape[1])
         mse_loss = mean_flat((noise - model_eps) ** 2)
 
@@ -322,7 +322,7 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
             x_0=x_0,
             x_t=x_t,
             t=t,
-            # TODO: The OpenAI people the kwargs, not sure
+            # TODO: The OpenAI people use kwargs, not sure
             # why not just directly return `frozen_out`
             model=lambda *_, r=frozen_out: r,
         )

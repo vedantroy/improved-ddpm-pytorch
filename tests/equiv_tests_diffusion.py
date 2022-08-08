@@ -117,7 +117,7 @@ def test_gaussian_diffusion_funcs():
     pred_mean, pred_var = out["mean"], out["log_variance"]
 
     # model_eps, model_v = th.chunk(fake_model_out, 2, dim=1)
-    my_pred_mean, my_pred_var = my_gd.p_mean_variance(
+    my_pred_mean, _, my_pred_var = my_gd.p_mean_variance(
         model=fake_model, x_t=x_t, t=t, threshold=None
     )
 
