@@ -259,6 +259,12 @@ class GaussianDiffusion(ABC):
 
 
 class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
+    def get_eps_and_var(self, model_output, *, C):
+        model_eps, model_v = rearrange(
+            model_output, "B (split C) ... -> split B C ...", split=2, C=C
+        )
+        return model_eps, model_v
+
     def model_v_to_log_variance(self, v, t):
         """
         Convert the model's v vector to an interpolated variance
@@ -273,7 +279,29 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
         frac = (v + 1) / 2
         return frac * max_log + (1 - frac) * min_log
 
-    def vb_loss(self, *, x_0, true_mean, true_log_var, pred_mean, pred_log_var, t):
+    def p_mean_variance(self, *, model, x_t, t, threshold):
+        """
+        Get the model's predicted mean and variance for the distribution
+        that predicts x_{t-1}
+
+        - Predict x_0 from epsilon
+        - Use x_0 and x_t to predict the mean of q(x_{t-1}|x_t,x_0)
+        - Turn the model's v vector into a variance
+        """
+        model_eps, model_v = self.get_eps_and_var(model(x_t, t), C=x_t.shape[1])
+        pred_x_0 = self.predict_x0_from_eps(x_t=x_t, t=t, eps=model_eps)
+        pred_x_0 = self.threshold(pred_x_0, threshold)
+
+        pred_mean = self.q_posterior_mean(x_0=pred_x_0, x_t=x_t, t=t)
+        pred_log_var = self.model_v_to_log_variance(model_v, t)
+        return pred_mean, pred_log_var
+
+    def vb_loss(self, *, x_0, x_t, t, model):
+        true_mean = self.q_posterior_mean(x_0=x_0, x_t=x_t, t=t)
+        true_log_var = for_timesteps(self.posterior_log_variance_clipped, t, x_t)
+        pred_mean, pred_log_var = self.p_mean_variance(
+            model=model, x_t=x_t, t=t, threshold=None
+        )
         kl = normal_kl(true_mean, true_log_var, pred_mean, pred_log_var)
         kl = mean_flat(kl) / math.log(2.0)
 
@@ -285,70 +313,27 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
         # `th.where` selects from tensor 1 if cond is true and tensor 2 otherwise
         return th.where((t == 0), decoder_nll, kl)
 
-    def p_mean_variance(self, x_t, t, model_v, model_eps, *, threshold):
-        """
-        Get the model's predicted mean and variance for the distribution
-        that predicts x_{t-1}
+    def training_losses_with_model_output(self, *, model_output, x_0, x_t, t, noise):
+        model_eps, model_v = self.get_eps_and_var(model_output, C=x_t.shape[1])
+        mse_loss = mean_flat((noise - model_eps) ** 2)
 
-        - Predict x_0 from epsilon
-        - Use x_0 and x_t to predict the mean of q(x_{t-1}|x_t,x_0)
-        - Turn the model's v vector into a variance
-        """
-        pred_x_0 = self.predict_x0_from_eps(x_t=x_t, t=t, eps=model_eps)
-        if threshold:
-            # Question: Why do we apply clamping before q_posterior?
-            pred_x_0 = pred_x_0.clamp(-1, 1)
-        pred_mean = self.q_posterior_mean(x_0=pred_x_0, x_t=x_t, t=t)
-        pred_log_var = self.model_v_to_log_variance(model_v, t)
-        return pred_mean, pred_log_var
+        frozen_out = th.cat([model_eps.detach(), model_v], dim=1)
+        vb_loss = self.vb_loss(
+            x_0=x_0,
+            x_t=x_t,
+            t=t,
+            # TODO: The OpenAI people the kwargs, not sure
+            # why not just directly return `frozen_out`
+            model=lambda *_, r=frozen_out: r,
+        )
+        # > For our experiments, we set λ = 0.001 to prevent L_vlb from
+        # > overwhelming L_simple
+        # from [0]
+        vb_loss *= self.n_timesteps / 1000.0
+        return mse_loss, vb_loss
 
     def training_losses(self, model, x_0, t):
         raise Exception("not implemented")
-
-    # def training_losses_from_output(self, model_output, *, x_0, x_t, t, noise):
-    #   C = x_0.shape[1]
-
-    #   # model_eps: the model is predicting the noise
-    #   # model_v:
-    #   # > our model outputs a vector `v` [...] and we turn this
-    #   # > output into variances
-    #   # from [0]
-    #   model_eps, model_v = rearrange(
-    #       model_output, "B (split C) ... -> split B C ...", split=2, C=C
-    #   )
-    #   mse_loss = mean_flat((noise - model_eps) ** 2)
-
-    #   true_mean = self.q_posterior_mean(x_0, x_t, t)
-    #   true_log_var_clipped = for_timesteps(
-    #       self.posterior_log_variance_clipped, t, x_t
-    #   )
-
-    #   TODO: I think there's a bug here
-    #   Need to freeze the mean *before* passing to self.p_mean_variance
-    #   pred_mean, pred_log_var = self.p_mean_variance(
-    #       x_t, t, model_v, model_eps, threshold=False
-    #   )
-
-    #   # > Along this same line of reasoning,
-    #   # > we also apply a stop-gradient to the µθ(xt, t) output for the
-    #   # > L_vlb term. This way, Lvlb can guide Σθ(xt, t) while L_simple
-    #   # > is still the main source of influence over µθ(xt, t)
-    #   # from [0]
-    #   frozen_mean = true_mean.detach()
-    #   vb_loss = self.vb_loss(
-    #       x_0=x_0,
-    #       true_mean=frozen_mean,
-    #       true_log_var=true_log_var_clipped,
-    #       pred_mean=pred_mean,
-    #       pred_log_var=pred_log_var,
-    #       t=t,
-    #   )
-
-    #   # > For our experiments, we set λ = 0.001 to prevent L_vlb from
-    #   # > overwhelming L_simple
-    #   # from [0]
-    #   vb_loss *= self.n_timesteps / 1000.0
-    #   return mse_loss, vb_loss
 
 
 class FixedVarianceGaussianDiffusion(GaussianDiffusion):
@@ -375,5 +360,6 @@ class FixedVarianceGaussianDiffusion(GaussianDiffusion):
         x_t = self.q_sample(x_0, t, noise=noise)
 
         model_eps = model(x_t, t)
-        mse_loss = mean_flat((noise - model_eps) ** 2)
-        return mse_loss
+        return self.training_losses_with_model_output(
+            model_output=model_eps, noise=noise
+        )

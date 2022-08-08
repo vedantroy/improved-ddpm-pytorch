@@ -112,14 +112,13 @@ def test_gaussian_diffusion_funcs():
     testing.assert_close(x_tm1, my_x_tm1)
 
     fake_model_out = th.randn((N, C * 2, H, W))
-    out = gd.p_mean_variance(
-        lambda *args, r=fake_model_out: r, x_t, t, clip_denoised=False
-    )
+    fake_model = lambda *args, r=fake_model_out: r
+    out = gd.p_mean_variance(fake_model, x_t, t, clip_denoised=False)
     pred_mean, pred_var = out["mean"], out["log_variance"]
 
-    model_eps, model_v = th.chunk(fake_model_out, 2, dim=1)
+    # model_eps, model_v = th.chunk(fake_model_out, 2, dim=1)
     my_pred_mean, my_pred_var = my_gd.p_mean_variance(
-        x_t, t, model_v, model_eps, threshold=False
+        model=fake_model, x_t=x_t, t=t, threshold=None
     )
 
     # to prove it's actually working!
