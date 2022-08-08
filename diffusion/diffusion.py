@@ -224,9 +224,9 @@ class GaussianDiffusion(ABC):
     # def training_losses_from_output(self, model_output, *, x_0, x_t, t, noise):
     #     pass
 
-    @abstractmethod
-    def training_losses(self, *, model, x_0, t):
-        pass
+    # @abstractmethod
+    # def training_losses(self, *, model, x_0, t):
+    #     pass
 
     def p_sample(self, *, model, x_t, t, threshold):
         out = self.p_mean_variance(model=model, x_t=x_t, t=t, threshold=threshold)
@@ -332,8 +332,8 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
         vb_loss *= self.n_timesteps / 1000.0
         return SimpleNamespace(mse=mse_loss, vb=vb_loss)
 
-    def training_losses(self, model, x_0, t):
-        raise Exception("not implemented")
+    # def training_losses(self, model, x_0, t):
+    #     raise Exception("not implemented")
 
 
 class FixedVarianceGaussianDiffusion(GaussianDiffusion):
@@ -354,12 +354,12 @@ class FixedVarianceGaussianDiffusion(GaussianDiffusion):
     def training_losses_with_model_output(self, *, model_output, noise):
         return mean_flat((noise - model_output) ** 2)
 
-    def training_losses(self, *, model, x_0, t, noise=None):
-        if noise is None:
-            noise = th.randn_like(x_0)
-        x_t = self.q_sample(x_0, t, noise=noise)
+    # def training_losses(self, *, model, x_0, t, noise=None):
+    #     if noise is None:
+    #         noise = th.randn_like(x_0)
+    #     x_t = self.q_sample(x_0, t, noise=noise)
 
-        model_eps = model(x_t, t)
-        return self.training_losses_with_model_output(
-            model_output=model_eps, noise=noise
-        )
+    #     model_eps = model(x_t, t)
+    #     return self.training_losses_with_model_output(
+    #         model_output=model_eps, noise=noise
+    #     )
