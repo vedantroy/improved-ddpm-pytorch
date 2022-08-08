@@ -65,7 +65,7 @@ def for_timesteps(a, t, broadcast_to):
     :returns: (batch size, 1, 1, 1) where
               the number of 1s corresponds to len(...)
     """
-    b, *_ = t.shape
+    batch, *_ = t.shape
 
     # `a` should always be a 1D tensor of
     # values that exist at every timestep
@@ -75,7 +75,7 @@ def for_timesteps(a, t, broadcast_to):
     # at a given timestep
     out = a.to(device=broadcast_to.device).gather(0, t)
     num_nonbatch_dims = len(broadcast_to.shape) - 1
-    return out.reshape(b, *((1,) * num_nonbatch_dims))
+    return out.reshape(batch, *((1,) * num_nonbatch_dims))
 
 
 def f32(x):
