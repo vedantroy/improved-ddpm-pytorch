@@ -13,7 +13,7 @@ from openai_code.gaussian_diffusion import (
     LossType,
 )
 from diffusion.diffusion import (
-    FixedVarianceGaussianDiffusion,
+    FixedSmallVarianceGaussianDiffusion,
     cosine_betas,
     LearnedVarianceGaussianDiffusion,
     for_timesteps,
@@ -142,7 +142,7 @@ def test_gaussian_diffusion_e2e():
         loss_type=LossType.RESCALED_MSE,
         rescale_timesteps=False,
     )
-    my_gd = FixedVarianceGaussianDiffusion(betas)
+    my_gd = FixedSmallVarianceGaussianDiffusion(betas)
 
     N, C, H, W = 5, 3, 64, 64
 
@@ -158,8 +158,10 @@ def test_gaussian_diffusion_e2e():
     model = lambda *args, r=fake_output: r
     losses = gd.training_losses(model, x_0, t, noise=noise)
 
-    mse_loss = my_gd.training_losses_with_model_output(model_output=fake_output, noise=noise)
-    #mse_loss = my_gd.training_losses(model=model, x_0=x_0, t=t, noise=noise)
+    mse_loss = my_gd.training_losses_with_model_output(
+        model_output=fake_output, noise=noise
+    )
+    # mse_loss = my_gd.training_losses(model=model, x_0=x_0, t=t, noise=noise)
 
     testing.assert_close(losses["loss"], mse_loss)
     print("test_gaussian_diffusion_e2e passed")

@@ -150,7 +150,6 @@ class GaussianDiffusion(ABC):
         self.log_betas = f32(th.log(betas))
         check(self.log_betas)
 
-    # (12) in [0]
     def q_posterior_mean(self, *, x_0, x_t, t):
         """
         Calculate the mean of the normal distribution q(x_{t-1}|x_t, x_0)
@@ -271,7 +270,6 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
         From (15 in [0])
         """
 
-        # Turn the model output into a variance (15) in [0]
         min_log = for_timesteps(self.posterior_log_variance_clipped, t, v)
         max_log = for_timesteps(self.log_betas, t, v)
 
@@ -336,7 +334,7 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
     #     raise Exception("not implemented")
 
 
-class FixedVarianceGaussianDiffusion(GaussianDiffusion):
+class FixedSmallVarianceGaussianDiffusion(GaussianDiffusion):
     def p_mean_variance(self, *, model, x_t, t, threshold):
         model_variance, model_log_variance = (
             for_timesteps(self.posterior_variance, t, x_t),
@@ -348,7 +346,6 @@ class FixedVarianceGaussianDiffusion(GaussianDiffusion):
         x_0_pred = self.threshold(x_0_pred, threshold)
 
         model_mean = self.q_posterior_mean(x_0=x_0_pred, x_t=x_t, t=t)
-        # model_mean = self.threshold(model_mean, threshold)
         return PMeanVar(mean=model_mean, var=model_variance, log_var=model_log_variance)
 
     def training_losses_with_model_output(self, *, model_output, noise):
