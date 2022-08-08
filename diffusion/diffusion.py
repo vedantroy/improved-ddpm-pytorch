@@ -299,7 +299,7 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
     def vb_loss(self, *, x_0, x_t, t, model):
         true_mean = self.q_posterior_mean(x_0=x_0, x_t=x_t, t=t)
         true_log_var = for_timesteps(self.posterior_log_variance_clipped, t, x_t)
-        pred_mean, pred_log_var = self.p_mean_variance(
+        pred_mean, _, pred_log_var = self.p_mean_variance(
             model=model, x_t=x_t, t=t, threshold=None
         )
         kl = normal_kl(true_mean, true_log_var, pred_mean, pred_log_var)
@@ -330,7 +330,7 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
         # > overwhelming L_simple
         # from [0]
         vb_loss *= self.n_timesteps / 1000.0
-        return mse_loss, vb_loss
+        return SimpleNamespace(mse=mse_loss, vb=vb_loss)
 
     def training_losses(self, model, x_0, t):
         raise Exception("not implemented")

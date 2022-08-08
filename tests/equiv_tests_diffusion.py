@@ -165,3 +165,43 @@ def test_gaussian_diffusion_e2e():
 
 
 test_gaussian_diffusion_e2e()
+
+
+def test_gaussian_diffusion_learned_var_e2e():
+    T = 1000
+    betas = cosine_betas(T)
+    gd = GaussianDiffusion(
+        betas=betas,
+        model_mean_type=ModelMeanType.EPSILON,
+        model_var_type=ModelVarType.LEARNED_RANGE,
+        loss_type=LossType.RESCALED_MSE,
+        rescale_timesteps=False,
+    )
+    my_gd = LearnedVarianceGaussianDiffusion(betas)
+
+    N, C, H, W = 5, 3, 64, 64
+
+    x_0 = th.randn((N, C, H, W))
+    noise = th.randn_like(x_0)
+    # The vb_loss varies by several OOM depending on the timestep
+    # Here are real numbers for the below values:
+    # 2.2579e+00, 1.9633e-01, 2.9445e-02, 4.3882e+00, 1.4500e+03
+    t = th.tensor([0, 10, 900, 998, 999])
+
+    fake_output = th.randn((N, C * 2, H, W))
+
+    model = lambda *args, r=fake_output: r
+    losses = gd.training_losses(model, x_0, t, noise=noise)
+
+    x_t = my_gd.q_sample(x_0, t, noise)
+    my_losses = my_gd.training_losses_with_model_output(
+        model_output=fake_output, x_0=x_0, x_t=x_t, t=t, noise=noise
+    )
+
+    testing.assert_close(losses["mse"], my_losses.mse)
+    testing.assert_close(losses["vb"], my_losses.vb)
+
+    print("test_gaussian_diffusion_learned_var_e2e passed")
+
+
+test_gaussian_diffusion_learned_var_e2e()
