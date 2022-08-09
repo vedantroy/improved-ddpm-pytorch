@@ -1,7 +1,7 @@
 #! /bin/bash
 set -o xtrace
 
-FILE_ARGS='--config-file=./config/fixed_variance.yaml --dir-train=~/dataset/train --dir-val=~/dataset/val'
+FILE_ARGS='--config-file=./config_model/fixed_variance.yaml --dir-train=~/dataset/train --dir-val=~/dataset/val'
 TIME_ARGS='--target-time=10hr --batch-rate=1'
 # Original batch size in paper is 128
 # Scale learning rate by sqrt to batch size
