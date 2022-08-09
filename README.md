@@ -2,9 +2,15 @@
 This is my implementation of [Improved Denoising Diffusion Probabilistic Models](https://arxiv.org/abs/2102.09672) for learning purposes.
 
 ## Install
+Install the environment with conda, then:
+
 ```
 pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu116
 ```
+
+We do this because conda's environment.yml cannot specify extra arguments to pip.
+
+## Training Statistics
 
 ## Samples
 <p float="left">

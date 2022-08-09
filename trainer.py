@@ -50,7 +50,7 @@ def make_trainer(
         optimizers=[AdamW(model.parameters(), lr=1e-4, betas=(0.9, 0.95))],
         max_duration=Time.from_batch(duration_batches),
         device="gpu",
-        precision="fp32",
+        precision="amp",
         grad_accum=grad_accum,
         loggers=[
             FileLogger(),
