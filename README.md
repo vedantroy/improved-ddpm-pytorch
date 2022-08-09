@@ -11,6 +11,10 @@ pip install -r requirements.txt --extra-index-url https://download.pytorch.org/w
 We do this because conda's environment.yml cannot specify extra arguments to pip.
 
 ## Training Statistics
+### Commit 052985162b85ebf28903c79dc781703507ae99e3
+A100 80GB
+- Max batch size = 302 @ 1.00ba/s = 300 ba/s
+- Max batch size = 128 @ 2.12ba/s = 271.36 ba/s
 
 ## Samples
 <p float="left">

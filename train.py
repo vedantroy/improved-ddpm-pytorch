@@ -56,7 +56,7 @@ def run():
         # batch_size = 1024
         # batch_size = 512
         # batch_size = 300
-        batch_size = 302
+        batch_size = 128
         total_batches, scheduler = total_batches_and_scheduler_for_time(
             batch_rate=4.5,
             target_time=4 * 60 * 60,
