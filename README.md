@@ -1,6 +1,11 @@
 # Improved Denoised Diffusion Probabilistic Models
 This is my implementation of [Improved Denoising Diffusion Probabilistic Models](https://arxiv.org/abs/2102.09672) for learning purposes.
 
+## Install
+```
+pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu116
+```
+
 ## Samples
 <p float="left">
   <img src="./generated_faces/0000.png" width="64" />

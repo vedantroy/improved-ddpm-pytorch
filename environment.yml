@@ -1,75 +1,25 @@
-name: iddpm
+name: working
 channels:
-  - conda-forge
   - defaults
 dependencies:
-  - _libgcc_mutex=0.1=conda_forge
-  - _openmp_mutex=4.5=2_gnu
-  - bzip2=1.0.8=h7b6447c_0
+  - _libgcc_mutex=0.1=main
+  - _openmp_mutex=5.1=1_gnu
   - ca-certificates=2022.07.19=h06a4308_0
   - certifi=2022.6.15=py39h06a4308_0
   - ld_impl_linux-64=2.38=h1181459_1
-  - libffi=3.4.2=h295c915_4
-  - libgcc-ng=12.1.0=h8d9b700_16
-  - libgomp=12.1.0=h8d9b700_16
-  - libnsl=2.0.0=h7f98852_0
-  - libstdcxx-ng=12.1.0=ha89aaad_16
-  - libuuid=2.32.1=h7f98852_1000
-  - libzlib=1.2.12=h166bdaf_2
+  - libffi=3.3=he6710b0_2
+  - libgcc-ng=11.2.0=h1234567_1
+  - libgomp=11.2.0=h1234567_1
+  - libstdcxx-ng=11.2.0=h1234567_1
   - ncurses=6.3=h5eee18b_3
   - openssl=1.1.1q=h7f8727e_0
   - pip=22.1.2=py39h06a4308_0
-  - python=3.9.13=h9a8a25e_0_cpython
+  - python=3.9.12=h12debd9_1
   - readline=8.1.2=h7f8727e_1
   - setuptools=61.2.0=py39h06a4308_0
-  - sqlite=3.38.5=hc218d9a_0
+  - sqlite=3.39.2=h5082296_0
   - tk=8.6.12=h1ccaba5_0
   - tzdata=2022a=hda174b7_0
   - wheel=0.37.1=pyhd3eb1b0_0
   - xz=5.2.5=h7f8727e_1
   - zlib=1.2.12=h7f8727e_2
-  - pip:
-    - charset-normalizer==2.1.0
-    - click==8.1.3
-    - coolname==1.1.0
-    - docker-pycreds==0.4.0
-    - docstring-parser==0.14.1
-    - einops==0.4.1
-    - fsspec==2022.7.1
-    - gitdb==4.0.9
-    - gitpython==3.1.27
-    - idna==3.3
-    - mosaicml==0.8.2
-    - numpy==1.23.1
-    - packaging==21.3
-    - pathtools==0.1.2
-    - pillow==9.2.0
-    - portalocker==2.5.1
-    - promise==2.3
-    - protobuf==3.20.1
-    - psutil==5.9.1
-    - py-cpuinfo==8.0.0
-    - pyarrow==8.0.0
-    - pydeprecate==0.3.2
-    - pyparsing==3.0.9
-    - pytorch-ranger==0.1.1
-    - pyyaml==6.0
-    - requests==2.28.1
-    - ruamel-yaml==0.17.21
-    - ruamel-yaml-clib==0.2.6
-    - sentry-sdk==1.9.0
-    - setproctitle==1.3.0
-    - shortuuid==1.0.9
-    - six==1.16.0
-    - smmap==5.0.0
-    - torch==1.12.0
-    - torch-optimizer==0.1.0
-    - torchdata==0.4.0
-    - torchmetrics==0.7.3
-    - torchvision==0.13.0
-    - tqdm==4.64.0
-    - typing-extensions==4.3.0
-    - urllib3==1.26.11
-    - wandb==0.12.21
-    - yahp==0.1.1
-prefix: /home/user/miniconda/envs/iddpm
