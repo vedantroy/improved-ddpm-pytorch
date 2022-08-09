@@ -24,6 +24,14 @@ def main(checkpoint_file: Path, output_dir: Path, extra_files: List[Path] = type
     # (GH releases supports max 1GB file size)
     subprocess.run(["split", "--bytes", "500M", str(checkpoint_file), str(chunks_dir) + "/"])
 
+    files = []
+    for file in chunks_dir.glob("*"):
+        files.append(file)
+        shutil.move(file, chunks_dir / "..")
+
+    shutil.rmtree(chunks_dir)
+    files = [str(out_dir / str(file.name)) for file in files]
+
     for extra_file in extra_files:
         name = extra_file.name
         shutil.copy(extra_file, out_dir / name)
@@ -31,7 +39,7 @@ def main(checkpoint_file: Path, output_dir: Path, extra_files: List[Path] = type
     concat_script = out_dir / "concat.sh"
     with open(concat_script, "w+") as f:
         f.write("#!/bin/sh\n")
-        f.write(f"cat {chunks_dir}/* > {out_dir}/{folder_name}.checkpoint\n")
+        f.write(f"cat {' '.join(files)} > {out_dir}/{folder_name}.checkpoint\n")
 
     subprocess.check_call(['chmod', '+x', concat_script])
 
