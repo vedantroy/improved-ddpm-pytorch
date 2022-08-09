@@ -9,9 +9,11 @@ from utils import load_tensor
 def identity(x):
     return x
 
+
 # def count_files(dir):
 #     p = Path(dir)
 #     return sum(1 for _ in p.glob("*"))
+
 
 def load_parquet(path):
     table = pq.read_table(path)
@@ -52,7 +54,7 @@ def dataloader(dir, batch_size):
     return DataLoader(datapipe, batch_size=batch_size, num_workers=8, drop_last=True)
 
 
-#def train_val_loaders(dir, batch_size, val_batches, num_workers=8):
+# def train_val_loaders(dir, batch_size, val_batches, num_workers=8):
 #    datapipe = dp.iter.FSSpecFileLister(dir)
 #    datapipe = datapipe.map(load_parquet)
 #    datapipe = datapipe.flatmap(identity)

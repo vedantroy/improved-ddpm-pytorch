@@ -12,9 +12,10 @@ We do this because conda's environment.yml cannot specify extra arguments to pip
 
 ## Training Statistics
 ### Commit 052985162b85ebf28903c79dc781703507ae99e3
-A100 80GB
-- Max batch size = 302 @ 1.00ba/s = 300 ba/s
-- Max batch size = 128 @ 2.12ba/s = 271.36 ba/s
+| Device    | Batch Size | ba/s | samples/s |
+|-----------|------------|------|-----------|
+| A100-80GB | 302        | 1.00 | 300       |
+| A100-80GB | 128        | 2.12 | 271.36    |
 
 ## Samples
 <p float="left">

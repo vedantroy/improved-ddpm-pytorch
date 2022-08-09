@@ -70,6 +70,7 @@ class TrainerConfig(hp.Hparams):
         )
         return IDDPM(unet, diffusion)
 
+
 class IDDPM(ComposerModel):
     def __init__(self, unet: UNet, diffusion: GaussianDiffusion):
         super().__init__()
@@ -109,10 +110,12 @@ class IDDPM(ComposerModel):
 
     def metrics(self, train: bool = False):
         assert not train, f"Metrics are not available for training"
-        return torchmetrics.MetricCollection({
-            'mse': self.val_mse_loss,
-            'vb': self.val_vb_loss,
-        })
+        return torchmetrics.MetricCollection(
+            {
+                "mse": self.val_mse_loss,
+                "vb": self.val_vb_loss,
+            }
+        )
 
     def validate(self, batch):
         out = self.forward(batch)
@@ -128,7 +131,9 @@ class IDDPM(ComposerModel):
     def loss(self, out, micro_batch):
         losses = None
         if isinstance(self.diffusion, FixedSmallVarianceGaussianDiffusion):
-            losses = self.diffusion.losses_training(model_output=out.model_out, noise=out.noise)
+            losses = self.diffusion.losses_training(
+                model_output=out.model_out, noise=out.noise
+            )
         elif isinstance(self.diffusion, LearnedVarianceGaussianDiffusion):
             losses = self.diffusion.losses_training(
                 model_output=out.model_out,

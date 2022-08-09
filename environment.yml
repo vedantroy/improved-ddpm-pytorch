@@ -1,4 +1,4 @@
-name: working
+name: diffusion
 channels:
   - defaults
 dependencies:

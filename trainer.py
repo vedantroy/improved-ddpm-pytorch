@@ -3,13 +3,14 @@ from torch.optim.adamw import AdamW
 from composer.loggers import WandBLogger, FileLogger
 from composer import Trainer
 from composer.core import Time
-from composer.optim.scheduler import (
-    CosineAnnealingWithWarmupScheduler
-)
+from composer.optim.scheduler import CosineAnnealingWithWarmupScheduler
 from composer.callbacks import CheckpointSaver, LRMonitor, SpeedMonitor
 from callbacks import DiffusionMonitor
 
-def total_batches_and_scheduler_for_time(batch_rate, target_time, warmup, cosine_factor=1.2):
+
+def total_batches_and_scheduler_for_time(
+    batch_rate, target_time, warmup, cosine_factor=1.2
+):
     def intcast(x):
         assert x.is_integer(), f"Invalid int: {x}"
         return int(x)
@@ -24,7 +25,16 @@ def total_batches_and_scheduler_for_time(batch_rate, target_time, warmup, cosine
 
 
 def make_trainer(
-    *, model, train_dl, eval_dl, grad_accum, n_evals, n_checkpoints, n_diffusion_logs, duration_batches, schedulers
+    *,
+    model,
+    train_dl,
+    eval_dl,
+    grad_accum,
+    n_evals,
+    n_checkpoints,
+    n_diffusion_logs,
+    duration_batches,
+    schedulers,
 ):
     def get_interval(total, times):
         return Time.from_batch(total // times)

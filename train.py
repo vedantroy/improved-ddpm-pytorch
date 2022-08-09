@@ -1,66 +1,37 @@
+import typer
 from composer.core import Time
 
 from trainer import make_trainer, total_batches_and_scheduler_for_time
-from dataloaders import dataloader, overfit_dataloader
+from dataloaders import dataloader
 from iddpm import TrainerConfig, IDDPM
-
-# def scan_samples(model: ComposerModel, dl):
-#     def unnormalize(x):
-#         # Not sure if `.clamp` is necessary
-#         return (((x + 1) / 2).clamp(-1, 1) * 255).to(dtype=th.uint8).cpu()
-#
-#     with th.no_grad():
-#         model = model.cuda()
-#         model.eval()
-#         for idx, batch in enumerate(tqdm(dl)):
-#             batch["img"] = batch["img"].cuda()
-#             out = model(batch)
-#             mse_loss, vb_loss = model.loss(out, batch)
-#             if vb_loss.item() > 10:
-#                 print(f"High vb loss: {vb_loss}")
-#                 t = out.t.cpu().item()
-#                 img = unnormalize(out.x_0)[0]
-#                 noised_img = unnormalize(out.x_t)[0]
-#                 dir = Path("./vb_anomalies") / str(idx)
-#                 dir.mkdir(exist_ok=True, parents=True)
-#                 torchvision.io.write_png(img, str(dir / f"original_{t}.png"))
-#                 torchvision.io.write_png(noised_img, str(dir / f"noised_{t}.png"))
 
 MODE = "train"
 
 
-
-def run():
-    config = TrainerConfig.create("./config/fixed_variance.yaml", None, cli_args=False)
+def main(
+    # Files (config, datasets, etc.)
+    config_file: str,
+    dir_train: str,
+    dir_val: str,
+    # Time
+    target_time: int,
+    batch_rate: float,
+    # Scheduling
+    warmup: int,
+    # Batch/micro-batch size
+    batch_size: int,
+    n_micro_batches: int,
+    # Logging / Metrics
+    n_checkpoints: int,
+    n_diffusion_logs: int,
+    n_evals: int,
+):
+    config = TrainerConfig.create(config_file, None, cli_args=False)
     iddpm = config.initialize_object()
-    # unet, diffusion = config.initialize_object()
-    # iddpm = IDDPM(unet, diffusion)
 
-    if MODE == "scan_samples":
-        raise Exception("unsupported")
-    elif MODE == "overfit":
-        batches, batch_size = 1, 2
-        micro_batch_size = batch_size // 1
-        dl = overfit_dataloader(batches, 16, "./data/parquetx64")
-        # manual_train(dl, diffusion, unet)
-        trainer = make_trainer(
-            iddpm, dl, batch_size // micro_batch_size, lr=1e-4, duration="1000ba"
-        )
-        trainer.fit()
-    elif MODE == "train":
-        # batch_size = 64
-        # batch_size = 128
-        # batch_size = 256
-        #batch_size = 280
-        # batch_size = 2048
-        # batch_size = 1024
-        # batch_size = 512
-        # batch_size = 300
-        batch_size = 128
+    if MODE == "train":
         total_batches, scheduler = total_batches_and_scheduler_for_time(
-            batch_rate=4.5,
-            target_time=4 * 60 * 60,
-            warmup=1,
+            batch_rate=batch_rate, target_time=target_time, warmup=warmup  # 4.5  # 1.0
         )
 
         train_dl = dataloader("~/dataset/train", batch_size)
@@ -77,7 +48,9 @@ def run():
             schedulers=[scheduler],
         )
         trainer.fit()
+    else:
+        raise Exception("Unknown mode")
 
 
 if __name__ == "__main__":
-    run()
+    typer.run(main)

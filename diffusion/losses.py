@@ -50,6 +50,7 @@ def approx_standard_normal_cdf(x):
     """
     return 0.5 * (1.0 + th.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * th.pow(x, 3))))
 
+
 def can_broadcast(a, b):
     a_dims, b_dims = tuple(a.shape), tuple(b.shape)
     assert len(a_dims) == len(b_dims)
@@ -57,6 +58,7 @@ def can_broadcast(a, b):
         if x != y and x != 1 and y != 1:
             return False
     return True
+
 
 def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     """
@@ -69,7 +71,7 @@ def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     :param log_scales: the Gaussian log stddev Tensor.
     :return: a tensor like x of log probabilities (in nats).
     """
-    assert x.shape == means.shape 
+    assert x.shape == means.shape
     # FixedVarianceDiffusion might return a tensor of shape (B, 1, 1, ...)
     assert can_broadcast(log_scales, x)
     centered_x = x - means
