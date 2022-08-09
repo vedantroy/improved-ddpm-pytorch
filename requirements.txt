@@ -25,6 +25,7 @@ pyarrow==9.0.0
 pyDeprecate==0.3.2
 pyparsing==3.0.9
 pyrsistent==0.18.1
+pytimeparse==1.1.8
 pytorch-ranger==0.1.1
 PyYAML==6.0
 requests==2.28.1
@@ -41,6 +42,7 @@ torchdata==0.4.1
 torchmetrics==0.7.3
 torchvision==0.13.1+cu116
 tqdm==4.64.0
+typer==0.6.1
 typing_extensions==4.3.0
 urllib3==1.26.11
 wandb==0.12.21

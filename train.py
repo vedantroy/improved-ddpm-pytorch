@@ -31,8 +31,9 @@ def main(
     iddpm = config.initialize_object()
 
     def get_num(expr, typ):
-        val = eval(expr)
-        assert isinstance(val, typ), f"{type(val)} != {typ} (expr = {expr})"
+        without_quotes = expr[1:-1]
+        val = eval(without_quotes)
+        assert isinstance(val, typ), f"{type(val)} != {typ} (expr = {without_quotes})"
         return val
 
     # gasp!!
