@@ -35,6 +35,7 @@ def make_trainer(
     n_diffusion_logs,
     duration_batches,
     schedulers,
+    lr,
 ):
     def get_interval(total, times):
         return Time.from_batch(total // times)
@@ -57,7 +58,7 @@ def make_trainer(
         eval_interval=eval_interval,
         schedulers=schedulers,
         # default learning rate used by [0]
-        optimizers=[AdamW(model.parameters(), lr=1e-4, betas=(0.9, 0.95))],
+        optimizers=[AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95))],
         max_duration=Time.from_batch(duration_batches),
         device="gpu",
         precision="amp",
