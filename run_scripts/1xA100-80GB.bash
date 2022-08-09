@@ -8,4 +8,4 @@ BATCH_ARGS='--batch-size=302 --micro-batches=1'
 METRICS_ARGS='--checkpoints=100 --diffusion-logs=100 --evals=100'
 
 # disable typer's pretty tracebacks
-env WANDB_MODE="disabled" _TYPER_STANDARD_TRACEBACK=1 python3 train.py $FILE_ARGS $TIME_ARGS $SCHEDULE_ARGS $BATCH_ARGS $METRICS_ARGS
+env _TYPER_STANDARD_TRACEBACK=1 python3 train.py $FILE_ARGS $TIME_ARGS $SCHEDULE_ARGS $BATCH_ARGS $METRICS_ARGS
