@@ -29,9 +29,9 @@ def cosine_betas(timesteps, s=0.008, max_beta=0.999):
     """
     Get B_t for the cosine schedule (eq 17 in [0])
 
+    :param s: "We use a small offset s to prevent B_t from being too small near t = 0"
     :param max_beta: "In practice, we clip B_t to be no larger than 0.999 to prevent
                       singularities at the end of the diffusion process near t = T"
-    :param s: "We use a small offset s to prevent B_t from being too small near t = 0"
     """
     # If we add noise twice, then there are 3 total states (0, 1, 2)
     states = timesteps + 1
@@ -267,11 +267,15 @@ class GaussianDiffusion(ABC):
         return mean_flat((noise - model_eps) ** 2)
 
     def loss_vb(self, *, model_output, x_0, x_t, t, vb_stop_grad):
+        is_learned = isinstance(self, LearnedVarianceGaussianDiffusion)
+
         frozen_out = model_output
         if vb_stop_grad:
+            assert is_learned, f"Cannot apply stop-gradient to fixed variance diffusion"
             model_eps, model_v = get_eps_and_var(model_output, C=x_t.shape[1])
             frozen_out = th.cat([model_eps.detach(), model_v], dim=1)
-        assert frozen_out.shape[1] == x_t.shape[1] * 2
+        C = x_t.shape[1]
+        assert frozen_out.shape[1] == C * 2 if is_learned else C
 
         vb_loss = self.vb_term(
             x_0=x_0,
@@ -287,7 +291,9 @@ class GaussianDiffusion(ABC):
         return vb_loss * self.n_timesteps / 1000.0
 
     def losses_validation(self, *, model_output, noise, x_0, x_t, t):
-        model_eps, _ = get_eps_and_var(model_output, C=x_t.shape[1])
+        model_eps = model_output
+        if isinstance(self, LearnedVarianceGaussianDiffusion):
+            model_eps, _ = get_eps_and_var(model_output, C=x_t.shape[1])
         mse_loss = self.loss_mse(model_eps=model_eps, noise=noise)
         vb_loss = self.loss_vb(
             model_output=model_output,

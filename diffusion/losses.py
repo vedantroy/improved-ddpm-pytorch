@@ -7,6 +7,7 @@ Ho et al. diffusion models codebase:
 https://github.com/hojonathanho/diffusion/blob/1e0dceb3b3495bbe19116a5e1b3596cd0706c543/diffusion_tf/utils.py
 """
 
+from re import L
 import numpy as np
 
 import torch as th
@@ -49,6 +50,13 @@ def approx_standard_normal_cdf(x):
     """
     return 0.5 * (1.0 + th.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * th.pow(x, 3))))
 
+def can_broadcast(a, b):
+    a_dims, b_dims = tuple(a.shape), tuple(b.shape)
+    assert len(a_dims) == len(b_dims)
+    for x, y in zip(a_dims, b_dims):
+        if x != y and x != 1 and y != 1:
+            return False
+    return True
 
 def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     """
@@ -61,7 +69,9 @@ def discretized_gaussian_log_likelihood(x, *, means, log_scales):
     :param log_scales: the Gaussian log stddev Tensor.
     :return: a tensor like x of log probabilities (in nats).
     """
-    assert x.shape == means.shape == log_scales.shape
+    assert x.shape == means.shape 
+    # FixedVarianceDiffusion might return a tensor of shape (B, 1, 1, ...)
+    assert can_broadcast(log_scales, x)
     centered_x = x - means
     inv_stdv = th.exp(-log_scales)
     plus_in = inv_stdv * (centered_x + 1.0 / 255.0)

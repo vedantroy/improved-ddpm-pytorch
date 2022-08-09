@@ -6,7 +6,7 @@ import wandb
 import torchvision.transforms.functional as TVF
 from composer.utils import ensure_tuple
 from composer import Callback
-from composer.core import State, Time
+from composer.core import State
 from composer.loggers import Logger, WandBLogger, LogLevel
 
 
@@ -15,8 +15,8 @@ def normalized_to_bytes(img):
 
 
 class DiffusionMonitor(Callback):
-    def __init__(self, interval: str):
-        self.interval = Time.from_timestring(interval)
+    def __init__(self, interval):
+        self.interval = interval
         # wandb bug: https://github.com/wandb/wandb/issues/4027
         # self.to_display = to_display
         # self.key = key

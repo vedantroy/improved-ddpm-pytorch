@@ -9,3 +9,4 @@ unet:
 diffusion:
   schedule: cosine
   steps: 1000
+  learn_sigma: false

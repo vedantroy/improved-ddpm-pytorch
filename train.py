@@ -1,10 +1,7 @@
 from composer.core import Time
-from composer.optim.scheduler import (
-    CosineAnnealingWithWarmupScheduler,
-)
 
-from trainer import make_trainer
-from dataloaders import dataloader, overfit_dataloader, train_val_loaders
+from trainer import make_trainer, total_batches_and_scheduler_for_time
+from dataloaders import dataloader, overfit_dataloader
 from iddpm import TrainerConfig, IDDPM
 
 # def scan_samples(model: ComposerModel, dl):
@@ -32,27 +29,12 @@ from iddpm import TrainerConfig, IDDPM
 MODE = "train"
 
 
-def batches_for_time(batch_rate, target_time, warmup, cosine_factor=1.2):
-    def intcast(x):
-        assert x.is_integer(), f"Invalid int: {x}"
-        return int(x)
-
-    def batches(batches_per_sec, secs):
-        y = batches_per_sec * secs
-        return intcast(y)
-
-    total_batches = batches(batch_rate, target_time)
-    t_max = total_batches - warmup
-
-    return Time.from_batch(total_batches), CosineAnnealingWithWarmupScheduler(
-        t_warmup=Time.from_batch(warmup), t_max=Time.from_batch(intcast(t_max * cosine_factor))
-    )
-
 
 def run():
     config = TrainerConfig.create("./config/fixed_variance.yaml", None, cli_args=False)
-    unet, diffusion = config.initialize_object()
-    iddpm = IDDPM(unet, diffusion)
+    iddpm = config.initialize_object()
+    # unet, diffusion = config.initialize_object()
+    # iddpm = IDDPM(unet, diffusion)
 
     if MODE == "scan_samples":
         raise Exception("unsupported")
@@ -67,23 +49,23 @@ def run():
         trainer.fit()
     elif MODE == "train":
         batch_size = 8
-        total_batches, scheduler = batches_for_time(
+        total_batches, scheduler = total_batches_and_scheduler_for_time(
             batch_rate=4.5,
             target_time=4 * 60 * 60,
-            warmup=200,
+            warmup=1,
         )
-        print(f"Total batches: {total_batches}")
 
-        dataloaders = train_val_loaders(batch_size, "~/parquetx64", val_batches=8)
-        train_dl, val_dl = dataloaders.train, dataloaders.val
+        train_dl = dataloader("~/dataset/train", batch_size)
+        val_dl = dataloader("~/dataset/val", batch_size)
         trainer = make_trainer(
             model=iddpm,
             train_dl=train_dl,
             eval_dl=val_dl,
-            eval_interval=Time.from_batch(5000),
             grad_accum=1,
-            lr=1e-4,
-            duration=total_batches,
+            n_evals=50,
+            n_checkpoints=10,
+            n_diffusion_logs=10,
+            duration_batches=total_batches,
             schedulers=[scheduler],
         )
         trainer.fit()
