@@ -1,0 +1,16 @@
+target_time: 10hr
+batch_rate: 1
+
+warmup_batches: 500
+# Turn down learning rate
+# b/c I suspect it will increase convergence
+# significantly
+lr: 1.00*1e-4
+
+batch_size: 302
+micro_batches: 1
+precision: amp
+
+checkpoints: 12
+diffusion_logs: 200
+evals: 120
