@@ -59,7 +59,10 @@ def main(
     MODE = "train"
     if MODE == "train":
         total_batches, scheduler = total_batches_and_scheduler_for_time(
-            batch_rate=c.batch_rate, target_time=target_time, warmup=c.warmup_batches
+            batch_rate=c.batch_rate,
+            target_time=target_time,
+            warmup=c.warmup_batches,
+            cosine_factor=1.4,
         )
 
         train_dl = dataloader(dir_train, c.batch_size, workers=8)
