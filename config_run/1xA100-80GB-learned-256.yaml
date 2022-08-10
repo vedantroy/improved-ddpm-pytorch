@@ -1,5 +1,5 @@
 target_time: 10hr
-batch_rate: 1
+batch_rate: 2.00
 
 warmup_batches: 500
 # Turn down learning rate
@@ -8,10 +8,13 @@ warmup_batches: 500
 lr: 1.00*1e-4
 cosine_factor: 1.2
 
-batch_size: 144
+batch_size: 140
 micro_batches: 1
 precision: amp
 
-checkpoints: 12
+# For some reason, time is 21hrs
+# instead of 10 although the math
+# w/ the batch_rate checks out
+checkpoints: 24
 diffusion_logs: 200
 evals: 120
