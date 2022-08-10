@@ -47,8 +47,8 @@ def main(
             batch_rate=batch_rate, target_time=target_time, warmup=warmup
         )
 
-        train_dl = dataloader(dir_train, batch_size)
-        val_dl = dataloader(dir_val, batch_size)
+        train_dl = dataloader(dir_train, batch_size, workers=8)
+        val_dl = dataloader(dir_val, batch_size, workers=2)
         trainer = make_trainer(
             model=iddpm,
             train_dl=train_dl,

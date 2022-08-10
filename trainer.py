@@ -11,11 +11,7 @@ from callbacks import DiffusionMonitor
 def total_batches_and_scheduler_for_time(
     batch_rate, target_time, warmup, cosine_factor=1.2
 ):
-    def intcast(x):
-        assert x.is_integer(), f"Invalid int: {x}"
-        return int(x)
-
-    total_batches = intcast(target_time * batch_rate)
+    total_batches = int(target_time * batch_rate)
     t_max = total_batches - warmup
 
     return total_batches, CosineAnnealingWithWarmupScheduler(
@@ -36,6 +32,7 @@ def make_trainer(
     duration_batches,
     schedulers,
     lr,
+    precision,
 ):
     def get_interval(total, times):
         return Time.from_batch(total // times)
@@ -61,7 +58,7 @@ def make_trainer(
         optimizers=[AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95))],
         max_duration=Time.from_batch(duration_batches),
         device="gpu",
-        precision="amp",
+        precision=precision,
         grad_accum=grad_accum,
         loggers=[
             FileLogger(),

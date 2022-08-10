@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pyarrow.parquet as pq
 import torchdata.datapipes as dp
 from torch.utils.data import DataLoader
@@ -8,11 +10,6 @@ from utils import load_tensor
 
 def identity(x):
     return x
-
-
-# def count_files(dir):
-#     p = Path(dir)
-#     return sum(1 for _ in p.glob("*"))
 
 
 def load_parquet(path):
@@ -44,14 +41,20 @@ def overfit_dataloader(num_batches, batch_size, dir):
     return DataLoader(datapipe, batch_size=batch_size, num_workers=1)
 
 
-def dataloader(dir, batch_size):
-    # total_files = count_files(dir)
+def count_files(dir):
+    p = Path(dir)
+    assert p.is_dir(), f"{dir} is not a directory"
+    return sum(1 for _ in p.glob("*"))
+
+def dataloader(dir, batch_size, workers):
+    total_files = count_files(dir)
+    print(f"Total files: {total_files}")
     datapipe = dp.iter.FSSpecFileLister(dir)
     datapipe = datapipe.map(load_parquet)
     datapipe = datapipe.flatmap(identity)
     datapipe = datapipe.shuffle()
     datapipe = datapipe.sharding_filter()
-    return DataLoader(datapipe, batch_size=batch_size, num_workers=8, drop_last=True)
+    return DataLoader(datapipe, batch_size=batch_size, num_workers=workers, drop_last=True)
 
 
 # def train_val_loaders(dir, batch_size, val_batches, num_workers=8):
