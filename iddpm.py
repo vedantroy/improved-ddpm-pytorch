@@ -126,7 +126,11 @@ class IDDPM(ComposerModel):
             x_t=out.x_t,
             t=out.t,
         )
-        return losses.mse, losses.vb
+        print(f"Losses: {losses}")
+        return th.mean(losses.mse)
+        # return th.mean(losses.mse), th.mean(losses.vb)
+        # return losses.mse, losses.vb
+        # return losses.mse, losses.vb
 
     def loss(self, out, micro_batch):
         losses = None

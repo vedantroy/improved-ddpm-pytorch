@@ -1,0 +1,14 @@
+# This is not a config for efficient training
+target_time: 10hr
+batch_rate: 2.34
+
+warmup_batches: 500
+lr: 1e-4
+
+batch_size: 16
+micro_batches: 1
+precision: fp32
+
+checkpoints: 12
+diffusion_logs: 200
+evals: 14000
