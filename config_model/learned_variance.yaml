@@ -1,6 +1,7 @@
 unet:
   in_channels: 3
-  out_channels: 3
+  # 6 channels b/c need to output learned variance interpolation vector
+  out_channels: 6
   model_channels: 128
   channel_mult: [1, 2, 3, 4]
   layer_attn: [false, false, true, true]
