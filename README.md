@@ -31,7 +31,7 @@ We do this because conda's environment.yml cannot specify extra arguments to pip
   <img src="./generated_faces/0009.gif" width="64" />
 </p>
 
-The results of training on CelebHQ for 64500 batches where each batch had 8 samples. Took ~ 4 hrs on a V100. Used the fixed_variance.yaml config.
+Trained on CelebHQ for 36000 batches with batch size of 302.
 
 ## Features
 Implemented:
