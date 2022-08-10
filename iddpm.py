@@ -1,6 +1,7 @@
 from typing import List
 from types import SimpleNamespace
 from dataclasses import dataclass
+from abc import ABC, abstractmethod
 
 import torch as th
 from composer import ComposerModel
@@ -71,7 +72,7 @@ class IDDPMConfig(hp.Hparams):
 
 
 # Custom Metrics for validation
-class MSELossMetric(torchmetrics.Metric):
+class AverageLossMetric(torchmetrics.Metric, ABC):
     def __init__(self, diffusion: GaussianDiffusion):
         super().__init__()
         self.diffusion = diffusion
@@ -79,31 +80,28 @@ class MSELossMetric(torchmetrics.Metric):
         self.add_state("count", default=th.tensor(0), dist_reduce_fx="sum")
 
     def update(self, model_out, out):
-        cur = self.diffusion.validation_mse(model_output=model_out, noise=out.noise)
+        cur = self.loss(model_out, out)
         self.total += th.sum(cur)
         self.count += cur.shape[0]
 
     def compute(self):
         return self.total / self.count
 
+    @abstractmethod
+    def loss(self, model_out, out):
+        pass
 
-class VLBLossMetric(torchmetrics.Metric):
-    def __init__(self, diffusion: GaussianDiffusion):
-        super().__init__()
-        self.diffusion = diffusion
-        self.add_state("total", default=th.tensor(0), dist_reduce_fx="sum")
-        self.add_state("count", default=th.tensor(0), dist_reduce_fx="sum")
 
-    def update(self, model_out, out):
-        cur = self.diffusion.validation_vb(
+class MSELossMetric(AverageLossMetric):
+    def loss(self, model_out, out):
+        return self.diffusion.validation_mse(model_output=model_out, noise=out.noise)
+
+
+class VLBLossMetric(AverageLossMetric):
+    def loss(self, model_out, out):
+        return self.diffusion.validation_vb(
             model_output=model_out, x_0=out.x_0, x_t=out.x_t, t=out.t
         )
-        assert len(cur.shape) == 1
-        self.total += th.sum(cur)
-        self.count += cur.shape[0]
-
-    def compute(self):
-        return self.total / self.count
 
 
 class IDDPM(ComposerModel):
