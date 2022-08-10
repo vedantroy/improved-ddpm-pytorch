@@ -7,7 +7,9 @@ import shutil
 import os
 
 
-def main(checkpoint_file: Path, output_dir: Path, extra_files: List[Path] = typer.Option([])):
+def main(
+    checkpoint_file: Path, output_dir: Path, extra_files: List[Path] = typer.Option([])
+):
     assert checkpoint_file.is_file(), f"{checkpoint_file} is not a file"
     assert output_dir.is_dir(), f"{output_dir} is not a directory"
 
@@ -22,7 +24,9 @@ def main(checkpoint_file: Path, output_dir: Path, extra_files: List[Path] = type
 
     # Split checkpoint file into chunks so it can be uploaded to GH releases
     # (GH releases supports max 1GB file size)
-    subprocess.run(["split", "--bytes", "500M", str(checkpoint_file), str(chunks_dir) + "/"])
+    subprocess.run(
+        ["split", "--bytes", "500M", str(checkpoint_file), str(chunks_dir) + "/"]
+    )
 
     files = []
     for file in chunks_dir.glob("*"):
@@ -41,7 +45,7 @@ def main(checkpoint_file: Path, output_dir: Path, extra_files: List[Path] = type
         f.write("#!/bin/sh\n")
         f.write(f"cat {' '.join(files)} > {out_dir}/{folder_name}.checkpoint\n")
 
-    subprocess.check_call(['chmod', '+x', concat_script])
+    subprocess.check_call(["chmod", "+x", concat_script])
 
 
 if __name__ == "__main__":
