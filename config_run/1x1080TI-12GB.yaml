@@ -1,4 +1,6 @@
-# This is not a config for efficient training
+# This is not a config for efficient training!!!
+# You should definitely increase the batch size to 128 
+# & split it into micro batches
 target_time: 10hr
 batch_rate: 2.34
 

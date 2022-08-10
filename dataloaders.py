@@ -46,6 +46,7 @@ def count_files(dir):
     assert p.is_dir(), f"{dir} is not a directory"
     return sum(1 for _ in p.glob("*"))
 
+
 def dataloader(dir, batch_size, workers):
     # total_files = count_files(dir)
     # print(f"Total files: {total_files}")
@@ -54,7 +55,9 @@ def dataloader(dir, batch_size, workers):
     datapipe = datapipe.flatmap(identity)
     datapipe = datapipe.shuffle()
     datapipe = datapipe.sharding_filter()
-    dl = DataLoader(datapipe, batch_size=batch_size, num_workers=workers, drop_last=True)
+    dl = DataLoader(
+        datapipe, batch_size=batch_size, num_workers=workers, drop_last=True
+    )
     has_item = any(True for _ in dl)
     assert has_item, f"{dir} with {workers} workers yielded no batches"
     return dl

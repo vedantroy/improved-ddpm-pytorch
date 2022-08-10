@@ -290,12 +290,14 @@ class GaussianDiffusion(ABC):
         # from [0]
         return vb_loss * self.n_timesteps / 1000.0
 
-    def losses_validation(self, *, model_output, noise, x_0, x_t, t):
+    def validation_mse(self, *, model_output, noise):
         model_eps = model_output
         if isinstance(self, LearnedVarianceGaussianDiffusion):
-            model_eps, _ = get_eps_and_var(model_output, C=x_t.shape[1])
-        mse_loss = self.loss_mse(model_eps=model_eps, noise=noise)
-        vb_loss = self.loss_vb(
+            model_eps, _ = get_eps_and_var(model_output, C=noise.shape[1])
+        return self.loss_mse(model_eps=model_eps, noise=noise)
+
+    def validation_vb(self, *, model_output, x_0, x_t, t):
+        return self.loss_vb(
             model_output=model_output,
             x_0=x_0,
             x_t=x_t,
@@ -303,7 +305,6 @@ class GaussianDiffusion(ABC):
             # No backprop during validation
             vb_stop_grad=False,
         )
-        return SimpleNamespace(mse=mse_loss, vb=vb_loss)
 
     @abstractmethod
     def losses_training(self, *args, **kwargs):

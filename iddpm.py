@@ -1,7 +1,6 @@
 from typing import List
 from types import SimpleNamespace
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
 
 import torch as th
 from composer import ComposerModel
@@ -71,14 +70,50 @@ class IDDPMConfig(hp.Hparams):
         return IDDPM(unet, diffusion)
 
 
+# Custom Metrics for validation
+class MSELossMetric(torchmetrics.Metric):
+    def __init__(self, diffusion: GaussianDiffusion):
+        super().__init__()
+        self.diffusion = diffusion
+        self.add_state("total", default=th.tensor(0), dist_reduce_fx="sum")
+        self.add_state("count", default=th.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, model_out, out):
+        cur = self.diffusion.validation_mse(model_output=model_out, noise=out.noise)
+        self.total += th.sum(cur)
+        self.count += cur.shape[0]
+
+    def compute(self):
+        return self.total / self.count
+
+
+class VLBLossMetric(torchmetrics.Metric):
+    def __init__(self, diffusion: GaussianDiffusion):
+        super().__init__()
+        self.diffusion = diffusion
+        self.add_state("total", default=th.tensor(0), dist_reduce_fx="sum")
+        self.add_state("count", default=th.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, model_out, out):
+        cur = self.diffusion.validation_vb(
+            model_output=model_out, x_0=out.x_0, x_t=out.x_t, t=out.t
+        )
+        assert len(cur.shape) == 1
+        self.total += th.sum(cur)
+        self.count += cur.shape[0]
+
+    def compute(self):
+        return self.total / self.count
+
+
 class IDDPM(ComposerModel):
     def __init__(self, unet: UNet, diffusion: GaussianDiffusion):
         super().__init__()
         self.model = unet
         self.diffusion = diffusion
 
-        self.val_mse_loss = torchmetrics.MeanMetric(nan_strategy="error")
-        self.val_vb_loss = torchmetrics.MeanMetric(nan_strategy="error")
+        self.val_mse_loss = MSELossMetric(self.diffusion)
+        self.val_vb_loss = VLBLossMetric(self.diffusion)
 
     def forward(self, batch):
         assert len(batch.shape) == 4
@@ -119,18 +154,7 @@ class IDDPM(ComposerModel):
 
     def validate(self, batch):
         out = self.forward(batch)
-        losses = self.diffusion.losses_validation(
-            model_output=out.model_out,
-            noise=out.noise,
-            x_0=out.x_0,
-            x_t=out.x_t,
-            t=out.t,
-        )
-        print(f"Losses: {losses}")
-        return th.mean(losses.mse)
-        # return th.mean(losses.mse), th.mean(losses.vb)
-        # return losses.mse, losses.vb
-        # return losses.mse, losses.vb
+        return out.model_out, out
 
     def loss(self, out, micro_batch):
         losses = None
