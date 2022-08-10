@@ -19,16 +19,16 @@ We do this because conda's environment.yml cannot specify extra arguments to pip
 
 ## Samples
 <p float="left">
-  <img src="./generated_faces/0000.png" width="64" />
-  <img src="./generated_faces/0001.png" width="64" />
-  <img src="./generated_faces/0002.png" width="64" />
-  <img src="./generated_faces/0003.png" width="64" />
-  <img src="./generated_faces/0004.png" width="64" />
-  <img src="./generated_faces/0005.png" width="64" />
-  <img src="./generated_faces/0006.png" width="64" />
-  <img src="./generated_faces/0007.png" width="64" />
-  <img src="./generated_faces/0008.png" width="64" />
-  <img src="./generated_faces/0009.png" width="64" />
+  <img src="./generated_faces/0000.gif" width="64" />
+  <img src="./generated_faces/0001.gif" width="64" />
+  <img src="./generated_faces/0002.gif" width="64" />
+  <img src="./generated_faces/0003.gif" width="64" />
+  <img src="./generated_faces/0004.gif" width="64" />
+  <img src="./generated_faces/0005.gif" width="64" />
+  <img src="./generated_faces/0006.gif" width="64" />
+  <img src="./generated_faces/0007.gif" width="64" />
+  <img src="./generated_faces/0008.gif" width="64" />
+  <img src="./generated_faces/0009.gif" width="64" />
 </p>
 
 The results of training on CelebHQ for 64500 batches where each batch had 8 samples. Took ~ 4 hrs on a V100. Used the fixed_variance.yaml config.
