@@ -59,7 +59,7 @@ class DiffusionParams(hp.Hparams):
 
 
 @dataclass
-class TrainerConfig(hp.Hparams):
+class IDDPMConfig(hp.Hparams):
     unet: UNetParams = hp.required("the UNet model")
     diffusion: DiffusionParams = hp.required("Gaussian diffusion parameters")
 

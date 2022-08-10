@@ -7,7 +7,7 @@ import yahp as hp
 
 from trainer import make_trainer, total_batches_and_scheduler_for_time
 from dataloaders import dataloader
-from iddpm import TrainerConfig
+from iddpm import IDDPMConfig
 
 
 @dataclass
@@ -40,7 +40,7 @@ def main(
     dir_train = get_dir(dir_train)
     dir_val = get_dir(dir_val)
 
-    config = TrainerConfig.create(model_config_file, None, cli_args=False)
+    config = IDDPMConfig.create(model_config_file, None, cli_args=False)
     iddpm = config.initialize_object()
 
     run_config = RunConfig.create(run_config_file, None, cli_args=False)

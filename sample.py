@@ -5,7 +5,7 @@ import torchvision
 import torch as th
 import typer
 
-from iddpm import TrainerConfig, IDDPM
+from iddpm import IDDPMConfig, IDDPM
 
 
 def img_to_bytes(img):
@@ -21,7 +21,7 @@ def run(
 ):
     assert checkpoint.is_file(), f"Checkpoint file not found: {checkpoint}"
 
-    config = TrainerConfig.create(config, None, cli_args=False)
+    config = IDDPMConfig.create(config, None, cli_args=False)
     iddpm = config.initialize_object()
 
     out_dir.mkdir(parents=True)
