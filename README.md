@@ -32,6 +32,7 @@ We do this because conda's environment.yml cannot specify extra arguments to pip
 </p>
 
 Trained on CelebHQ for 36000 batches with batch size of 302.
+Loss of 0.02573 with $L_\text{simple}$ objective.
 
 ## Features
 Implemented:
