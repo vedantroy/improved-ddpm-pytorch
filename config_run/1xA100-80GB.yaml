@@ -1,0 +1,18 @@
+# This is not a config for efficient training!!!
+# You should definitely increase the batch size to 128 
+# & split it into micro batches
+target_time: 10hr
+batch_rate: 1
+
+warmup_batches: 500
+# Original batch size in paper is 128
+# Scale learning rate by sqrt to batch size
+lr: 1.51*1e-4
+
+batch_size: 302
+micro_batches: 1
+precision: amp
+
+checkpoints: 12
+diffusion_logs: 200
+evals: 120
