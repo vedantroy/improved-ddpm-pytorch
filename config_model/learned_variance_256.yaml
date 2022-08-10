@@ -1,0 +1,13 @@
+unet:
+  in_channels: 3
+  # 6 channels b/c need to output learned variance interpolation vector
+  out_channels: 6
+  model_channels: 256
+  channel_mult: [1, 2, 3, 4]
+  layer_attn: [false, false, true, true]
+  res_blocks: 3
+  attention_heads: 4
+diffusion:
+  schedule: cosine
+  steps: 1000
+  learn_sigma: true

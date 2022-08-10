@@ -6,6 +6,7 @@ warmup_batches: 500
 # b/c I suspect it will increase convergence
 # significantly
 lr: 1.00*1e-4
+cosine_factor: 1.2
 
 batch_size: 302
 micro_batches: 1

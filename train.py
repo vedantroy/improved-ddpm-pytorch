@@ -17,6 +17,7 @@ class RunConfig(hp.Hparams):
 
     warmup_batches: int = hp.required("Warmup batches")
     lr: str = hp.required("Learning rate")
+    cosine_factor: float = hp.required("# the factor to use for the cosine scheduler")
 
     batch_size: int = hp.required("Batch size")
     micro_batches: int = hp.required("Micro-batches")
@@ -25,6 +26,7 @@ class RunConfig(hp.Hparams):
     checkpoints: int = hp.required("# Checkpoints")
     diffusion_logs: int = hp.required("# Diffusion logs")
     evals: int = hp.required("# Evals")
+
 
 
 def main(
@@ -62,7 +64,7 @@ def main(
             batch_rate=c.batch_rate,
             target_time=target_time,
             warmup=c.warmup_batches,
-            cosine_factor=1.4,
+            cosine_factor=c.cosine_factor,
         )
 
         train_dl = dataloader(dir_train, c.batch_size, workers=8)
