@@ -3,6 +3,7 @@ from tqdm import tqdm
 
 import torchvision
 import torch as th
+import typer
 
 from iddpm import TrainerConfig, IDDPM
 
@@ -12,20 +13,21 @@ def img_to_bytes(img):
     return (((img + 1) / 2) * 255).clamp(0, 255).to(th.uint8)
 
 
-def run():
-    config = TrainerConfig.create("./config/fixed_variance.yaml", None, cli_args=False)
-    unet, diffusion = config.initialize_object()
-    iddpm = IDDPM(unet, diffusion)
+def run(
+    config: Path = typer.Option(...),
+    out_dir: Path = typer.Option(...),
+    checkpoint: Path = typer.Option(...),
+    samples: int = typer.Option(...),
+):
+    assert checkpoint.is_file(), f"Checkpoint file not found: {checkpoint}"
 
-    OUT_PATH = "./samples"
-    CHECKPOINT_PATH = "ep10.checkpoint"
-    N_SAMPLES = 10
+    config = TrainerConfig.create(config, None, cli_args=False)
+    iddpm = config.initialize_object()
 
-    out_path = Path(OUT_PATH)
-    out_path.mkdir(parents=True)
+    out_dir.mkdir(parents=True)
 
     device = th.device("cuda")
-    state_dict = th.load(CHECKPOINT_PATH)
+    state_dict = th.load(checkpoint)
     iddpm.load_state_dict(state_dict["state"]["model"])
 
     iddpm = iddpm.to(device=device)
@@ -37,14 +39,14 @@ def run():
             iddpm.diffusion.p_sample_loop_progressive(
                 model=iddpm.model,
                 noise=None,
-                shape=(N_SAMPLES, 3, 64, 64),
+                shape=(samples, 3, 64, 64),
                 threshold="static",
                 device=device,
             ),
             total=total,
         )
     ):
-        step_path = out_path / f"{idx:04d}"
+        step_path = out_dir / f"{idx:04d}"
         step_path.mkdir()
 
         for sample_idx, sample in enumerate(img):
@@ -53,4 +55,5 @@ def run():
             )
 
 
-run()
+if __name__ == "__main__":
+    typer.run(run)
