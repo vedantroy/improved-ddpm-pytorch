@@ -18,12 +18,18 @@ def run(
     out_dir.mkdir(exist_ok=True)
 
     images = list(first.glob("*"))
-    image_names = [x.name for x in images]
+    image_names = [(x.stem, x.name) for x in images]
 
-    for name in tqdm(image_names):
+    for (stem, name) in tqdm(image_names):
         gif_images = list(samples_dir.glob(f"*/{name}"))
         gif_images.sort(key=lambda x: int(x.parent.name))
-        gif_images = gif_images[::frame_interval]
+
+        ratio = 0.9
+        first = gif_images[: int(len(gif_images) * ratio)]
+        second = gif_images[int(len(gif_images) * ratio) :]
+
+        gif_images = first[::frame_interval] + second
+        # gif_images = gif_images[::frame_interval]
         total_frames = len(gif_images)
         # max FPS is 100 I think??
         fps = min(round(total_frames / seconds), 100)
@@ -32,7 +38,7 @@ def run(
         for file in tqdm(gif_images, leave=False):
             files.append(imageio.imread(file))
 
-        image_name = f"{out_dir}/{name}.gif"
+        image_name = f"{out_dir}/{stem}.gif"
         print(f"Saving image: {image_name} with fps: {fps}\n")
         imageio.mimsave(image_name, files, format="GIF", fps=fps)
         print("Image saved!")
