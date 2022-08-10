@@ -69,7 +69,7 @@ def make_trainer(
             LRMonitor(),
             SpeedMonitor(window_size=10),
             CheckpointSaver(save_interval=checkpoint_interval),
-            DiffusionMonitor(interval=diffusion_log_interval),
+            # DiffusionMonitor(interval=diffusion_log_interval),
         ],
     )
     return trainer

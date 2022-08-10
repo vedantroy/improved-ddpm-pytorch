@@ -14,6 +14,7 @@ from diffusion.diffusion import (
     GaussianDiffusion,
     LearnedVarianceGaussianDiffusion,
     cosine_betas,
+    get_eps_and_var,
 )
 
 
@@ -126,7 +127,10 @@ class IDDPM(ComposerModel):
         noise = th.randn_like(x_0)
         x_t = self.diffusion.q_sample(x_0, t, noise)
         model_out = self.model(x_t, t)
-        x_0_pred = self.diffusion.predict_x0_from_eps(x_t=x_t, t=t, eps=model_out)
+        # eps = model_out
+        # if isinstance(self.diffusion, LearnedVarianceGaussianDiffusion):
+        #     eps, _  = get_eps_and_var(model_out, model_out.shape[1] // 2)
+        #     x_0_pred = self.diffusion.predict_x0_from_eps(x_t=x_t, t=t, eps=model_out)
         d = dict(
             noise=noise,
             model_out=model_out,
@@ -134,7 +138,7 @@ class IDDPM(ComposerModel):
             x_t=x_t,
             t=t,
             # for logging
-            x_0_pred=x_0_pred,
+            # x_0_pred=x_0_pred,
             # for LearnedVarianceGaussianDiffusion
             x_0=x_0,
         )
