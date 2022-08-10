@@ -28,7 +28,7 @@ class RunConfig(hp.Hparams):
 
 
 def main(
-    trainer_config_file: Path = typer.Option(...),
+    model_config_file: Path = typer.Option(...),
     run_config_file: Path = typer.Option(...),
     dir_train: Path = typer.Option(...),
     dir_val: Path = typer.Option(...),
@@ -40,7 +40,7 @@ def main(
     dir_train = get_dir(dir_train)
     dir_val = get_dir(dir_val)
 
-    config = TrainerConfig.create(trainer_config_file, None, cli_args=False)
+    config = TrainerConfig.create(model_config_file, None, cli_args=False)
     iddpm = config.initialize_object()
 
     run_config = RunConfig.create(run_config_file, None, cli_args=False)
