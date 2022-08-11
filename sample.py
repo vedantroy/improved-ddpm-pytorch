@@ -28,7 +28,7 @@ def run(
 
     if sample_steps == -1:
         sample_steps = iddpm.diffusion.n_timesteps
-    spacing = simple_space_timesteps(iddpm.diffusion.n_timesteps, sample_steps)
+    spacing = space_timesteps(iddpm.diffusion.n_timesteps, [sample_steps])
 
     # We need the original betas to create the spaced betas
     timestep_map, betas = create_map_and_betas(iddpm.diffusion.betas, spacing)

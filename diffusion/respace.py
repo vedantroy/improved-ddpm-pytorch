@@ -59,7 +59,7 @@ def space_timesteps(num_timesteps, section_counts):
 
 ### End OpenAI Code
 
-# OpenAI's code wasn't giving expected results, so I wrote my own simple respacer
+# This has a bug -_-, use OpenAI's code
 def simple_space_timesteps(num_timesteps, num_sample_steps):
     assert num_sample_steps >= 2, "num_sample_steps must be at least 2"
 
@@ -71,7 +71,9 @@ def simple_space_timesteps(num_timesteps, num_sample_steps):
         steps.append(step)
 
     assert steps[0] == 0 and steps[-1] == num_timesteps - 1, f"Invalid spacing (len={len(steps)}): {steps}"
-    return set(steps)
+    r = set(steps)
+    assert len(r) == num_sample_steps, f"{len(r)} != {num_sample_steps}"
+    return r
 
 
 def create_map_and_betas(betas, use_timesteps):
