@@ -4,8 +4,9 @@ from tqdm import tqdm
 import torchvision
 import torch as th
 import typer
+from diffusion.spaced import create_map_and_betas, space_timesteps
 
-from iddpm import IDDPMConfig, IDDPM
+from iddpm import IDDPMConfig
 
 
 def img_to_bytes(img):
@@ -18,11 +19,19 @@ def run(
     out_dir: Path = typer.Option(...),
     checkpoint: Path = typer.Option(...),
     samples: int = typer.Option(...),
+    spacing: str = typer.Option(default=None),
 ):
     assert checkpoint.is_file(), f"Checkpoint file not found: {checkpoint}"
 
     config = IDDPMConfig.create(config, None, cli_args=False)
-    iddpm = config.initialize_object()
+
+    spacing = [1] if spacing is None else [int(x) for x in spacing.split(",")]
+    spacing = space_timesteps(iddpm.diffusion.n_timesteps, spacing)
+    timestep_map, betas = create_map_and_betas(iddpm.diffusion.betas, spacing)
+
+    iddpm = config.initialize_object(
+        diffusion=dict(timestep_map=timestep_map, betas=betas)
+    )
 
     out_dir.mkdir(parents=True)
 

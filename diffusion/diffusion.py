@@ -1,5 +1,4 @@
 from collections import namedtuple
-from types import SimpleNamespace
 from abc import ABC, abstractmethod
 
 import torch as th
@@ -81,13 +80,21 @@ def get_eps_and_var(model_output, *, C):
 
 
 class GaussianDiffusion(ABC):
-    def __init__(self, betas):
-        self.n_timesteps = betas.shape[0]
-        alphas = 1 - betas
-        alphas_cumprod = th.cumprod(alphas, dim=0)
-
+    def __init__(self, betas, timestep_map=None):
+        # TODO: Get rid of this "check"?
+        # It's never once caught a bug ...
         def check(x):
             assert x.shape == (self.n_timesteps,)
+
+        self.n_timesteps = betas.shape[0]
+        self.betas = betas
+        self.timestep_map = timestep_map if timestep_map else range(self.n_timesteps)
+        assert len(self.timestep_map) == self.n_timesteps
+
+        alphas = 1 - betas
+        alphas_cumprod = th.cumprod(alphas, dim=0)
+        self.alphas_cumprod = alphas_cumprod
+        check(self.alphas_cumprod)
 
         # TODO(verify): By prepending 1, the 1st beta is 0
         # This represents the initial image, which as a mean but no variance (since it's ground truth)
@@ -231,7 +238,6 @@ class GaussianDiffusion(ABC):
         assert xor(
             noise, shape
         ), f"Either noise or shape must be specified, but not both or neither"
-        indices = list(range(self.n_timesteps))[::-1]
 
         img = N = None
         if noise:
@@ -240,8 +246,8 @@ class GaussianDiffusion(ABC):
             img = th.randn(shape, device=device)
         N = img.shape[0]
 
-        for i in indices:
-            t = th.tensor([i] * N, device=device)
+        for _t in self.timestep_map[::-1]:
+            t = th.tensor([_t] * N, device=device)
             with th.no_grad():
                 img = self.p_sample(model=model, x_t=img, t=t, threshold=threshold)
                 yield img

@@ -49,13 +49,14 @@ class DiffusionParams(hp.Hparams):
     schedule: str = hp.required("diffusion schedule")
     learn_sigma: bool = hp.required("whether to learn sigma")
 
-    def initialize_object(self):
+    def initialize_object(self, diffusion_kwargs):
         assert self.schedule == "cosine", "Only cosine schedule is supported"
-        betas = cosine_betas(self.steps)
+        if not diffusion_kwargs:
+            diffusion_kwargs = {"betas": cosine_betas(self.steps)}
         return (
-            LearnedVarianceGaussianDiffusion(betas)
+            LearnedVarianceGaussianDiffusion(**diffusion_kwargs)
             if self.learn_sigma
-            else FixedSmallVarianceGaussianDiffusion(betas)
+            else FixedSmallVarianceGaussianDiffusion(**diffusion_kwargs)
         )
 
 
@@ -64,10 +65,10 @@ class IDDPMConfig(hp.Hparams):
     unet: UNetParams = hp.required("the UNet model")
     diffusion: DiffusionParams = hp.required("Gaussian diffusion parameters")
 
-    def initialize_object(self):
+    def initialize_object(self, diffusion_kwargs=None):
         unet, diffusion = (
             self.unet.initialize_object(),
-            self.diffusion.initialize_object(),
+            self.diffusion.initialize_object(diffusion_kwargs),
         )
         return IDDPM(unet, diffusion)
 
