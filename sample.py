@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torchvision
 import torch as th
 import typer
-from diffusion.spaced import create_map_and_betas, space_timesteps
+from diffusion.respace import WrappedModel, create_map_and_betas, simple_space_timesteps, space_timesteps
 
 from iddpm import IDDPMConfig
 
@@ -19,18 +19,23 @@ def run(
     out_dir: Path = typer.Option(...),
     checkpoint: Path = typer.Option(...),
     samples: int = typer.Option(...),
-    spacing: str = typer.Option(default=None),
+    sample_steps: int = typer.Option(default=-1),
 ):
     assert checkpoint.is_file(), f"Checkpoint file not found: {checkpoint}"
 
     config = IDDPMConfig.create(config, None, cli_args=False)
+    iddpm = config.initialize_object()
 
-    spacing = [1] if spacing is None else [int(x) for x in spacing.split(",")]
-    spacing = space_timesteps(iddpm.diffusion.n_timesteps, spacing)
+    if sample_steps == -1:
+        sample_steps = iddpm.diffusion.n_timesteps
+    spacing = simple_space_timesteps(iddpm.diffusion.n_timesteps, sample_steps)
+
+    # We need the original betas to create the spaced betas
     timestep_map, betas = create_map_and_betas(iddpm.diffusion.betas, spacing)
+    iddpm.model = WrappedModel(iddpm.model, timestep_map)
 
     iddpm = config.initialize_object(
-        diffusion=dict(timestep_map=timestep_map, betas=betas)
+        diffusion_kwargs=dict(betas=betas)
     )
 
     out_dir.mkdir(parents=True)

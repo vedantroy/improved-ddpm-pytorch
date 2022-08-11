@@ -1,3 +1,6 @@
+import torch as th
+from torch import nn
+
 from .diffusion import LearnedVarianceGaussianDiffusion
 
 ### Start OpenAI Code
@@ -56,6 +59,20 @@ def space_timesteps(num_timesteps, section_counts):
 
 ### End OpenAI Code
 
+# OpenAI's code wasn't giving expected results, so I wrote my own simple respacer
+def simple_space_timesteps(num_timesteps, num_sample_steps):
+    assert num_sample_steps >= 2, "num_sample_steps must be at least 2"
+
+    interval = num_timesteps / (num_sample_steps - 1)
+    steps = []
+
+    for i in range(num_sample_steps):
+        step = min(round(i * interval), num_timesteps - 1)
+        steps.append(step)
+
+    assert steps[0] == 0 and steps[-1] == num_timesteps - 1, f"Invalid spacing (len={len(steps)}): {steps}"
+    return set(steps)
+
 
 def create_map_and_betas(betas, use_timesteps):
     use_timesteps = set(use_timesteps)
@@ -75,4 +92,15 @@ def create_map_and_betas(betas, use_timesteps):
             map_generation_step_to_timestep.append(i)
 
     assert len(new_betas) == len(map_generation_step_to_timestep)
-    return map_generation_step_to_timestep, new_betas
+    return map_generation_step_to_timestep, th.Tensor(new_betas).to(dtype=th.float64)
+
+
+class WrappedModel(nn.Module):
+    def __init__(self, model, timestep_map):
+        super().__init__()
+        self.model = model
+        self.timestep_map = th.Tensor(timestep_map).to(dtype=th.int)
+
+    def forward(self, x, ts):
+        new_ts = self.timestep_map[ts].to(device=ts.device, dtype=ts.dtype)
+        return self.model(x, new_ts)

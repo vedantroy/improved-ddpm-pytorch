@@ -28,7 +28,6 @@ class RunConfig(hp.Hparams):
     evals: int = hp.required("# Evals")
 
 
-
 def main(
     model_config_file: Path = typer.Option(...),
     run_config_file: Path = typer.Option(...),

@@ -80,7 +80,7 @@ def get_eps_and_var(model_output, *, C):
 
 
 class GaussianDiffusion(ABC):
-    def __init__(self, betas, timestep_map=None):
+    def __init__(self, betas):
         # TODO: Get rid of this "check"?
         # It's never once caught a bug ...
         def check(x):
@@ -88,8 +88,7 @@ class GaussianDiffusion(ABC):
 
         self.n_timesteps = betas.shape[0]
         self.betas = betas
-        self.timestep_map = timestep_map if timestep_map else range(self.n_timesteps)
-        assert len(self.timestep_map) == self.n_timesteps
+        check(self.betas)
 
         alphas = 1 - betas
         alphas_cumprod = th.cumprod(alphas, dim=0)
@@ -217,7 +216,7 @@ class GaussianDiffusion(ABC):
             raise Exception("Not implemented")
 
     @abstractmethod
-    def p_mean_variance(self, *, model, x_t, t, threshold) -> PMeanVar:
+    def p_mean_variance(self, *, model, x_t, t, true_t, threshold) -> PMeanVar:
         """
         Get the model's predicted mean and variance for the distribution
         that predicts x_{t-1}
@@ -246,7 +245,7 @@ class GaussianDiffusion(ABC):
             img = th.randn(shape, device=device)
         N = img.shape[0]
 
-        for _t in self.timestep_map[::-1]:
+        for _t in list(range(self.n_timesteps))[::-1]:
             t = th.tensor([_t] * N, device=device)
             with th.no_grad():
                 img = self.p_sample(model=model, x_t=img, t=t, threshold=threshold)
