@@ -7,8 +7,10 @@ import typer
 from diffusion.respace import (
     WrappedModel,
     create_map_and_betas,
-    simple_space_timesteps,
     space_timesteps,
+)
+from diffusion.sampler import (
+    DDPMSampler
 )
 
 from iddpm import IDDPMConfig
@@ -25,6 +27,7 @@ def run(
     checkpoint: Path = typer.Option(...),
     samples: int = typer.Option(...),
     sample_steps: int = typer.Option(default=-1),
+    save_final_only: bool = typer.Option(False),
 ):
     assert checkpoint.is_file(), f"Checkpoint file not found: {checkpoint}"
 
@@ -50,10 +53,11 @@ def run(
     iddpm = iddpm.to(device=device)
     iddpm.eval()
 
+    sampler = DDPMSampler(iddpm.diffusion)
     total = iddpm.diffusion.n_timesteps
     for idx, img in enumerate(
         tqdm(
-            iddpm.diffusion.p_sample_loop_progressive(
+            sampler.sample_loop_progressive(
                 model=iddpm.model,
                 noise=None,
                 shape=(samples, 3, 64, 64),
@@ -63,13 +67,14 @@ def run(
             total=total,
         )
     ):
-        step_path = out_dir / f"{idx:04d}"
-        step_path.mkdir()
 
-        for sample_idx, sample in enumerate(img):
-            torchvision.io.write_png(
-                img_to_bytes(sample.cpu()), str(step_path / f"{sample_idx:04d}.png")
-            )
+        if not save_final_only or idx == total - 1:
+            step_path = out_dir / f"{idx:04d}"
+            step_path.mkdir()
+            for sample_idx, sample in enumerate(img):
+                torchvision.io.write_png(
+                    img_to_bytes(sample.cpu()), str(step_path / f"{sample_idx:04d}.png")
+                )
 
 
 if __name__ == "__main__":
