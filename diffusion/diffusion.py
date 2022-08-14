@@ -59,7 +59,7 @@ def for_timesteps(a, t, broadcast_to):
 
     # `a` should always be a 1D tensor of
     # values that exist at every timestep
-    assert len(a.shape) == 1
+    assert len(a.shape) == 1, f"{a.shape} is not a 1D tensor"
 
     # use `t` as an index tensor to extract values
     # at a given timestep
