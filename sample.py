@@ -4,7 +4,12 @@ from tqdm import tqdm
 import torchvision
 import torch as th
 import typer
-from diffusion.respace import WrappedModel, create_map_and_betas, simple_space_timesteps, space_timesteps
+from diffusion.respace import (
+    WrappedModel,
+    create_map_and_betas,
+    simple_space_timesteps,
+    space_timesteps,
+)
 
 from iddpm import IDDPMConfig
 
@@ -34,9 +39,7 @@ def run(
     timestep_map, betas = create_map_and_betas(iddpm.diffusion.betas, spacing)
     iddpm.model = WrappedModel(iddpm.model, timestep_map)
 
-    iddpm = config.initialize_object(
-        diffusion_kwargs=dict(betas=betas)
-    )
+    iddpm = config.initialize_object(diffusion_kwargs=dict(betas=betas))
 
     out_dir.mkdir(parents=True)
 

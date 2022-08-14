@@ -310,7 +310,14 @@ class GaussianDiffusion:
         return t
 
     def p_sample(
-        self, model, x, t, clip_denoised=True, denoised_fn=None, model_kwargs=None
+        self,
+        model,
+        x,
+        t,
+        clip_denoised=True,
+        denoised_fn=None,
+        model_kwargs=None,
+        rng=None,
     ):
         """
         Sample x_{t-1} from the model at the given timestep.
@@ -335,7 +342,8 @@ class GaussianDiffusion:
             denoised_fn=denoised_fn,
             model_kwargs=model_kwargs,
         )
-        noise = th.randn_like(x)
+        assert rng != None
+        noise = th.randn(x.shape, generator=rng)
         nonzero_mask = (
             (t != 0).float().view(-1, *([1] * (len(x.shape) - 1)))
         )  # no noise when t == 0
@@ -394,6 +402,7 @@ class GaussianDiffusion:
         model_kwargs=None,
         device=None,
         progress=False,
+        rng=None,
     ):
         """
         Generate samples from the model and yield intermediate samples from
@@ -406,10 +415,9 @@ class GaussianDiffusion:
         if device is None:
             device = next(model.parameters()).device
         assert isinstance(shape, (tuple, list))
-        if noise is not None:
-            img = noise
-        else:
-            img = th.randn(*shape, device=device)
+        assert rng != None
+        assert noise != None
+        img = noise
         indices = list(range(self.num_timesteps))[::-1]
 
         if progress:
@@ -428,6 +436,7 @@ class GaussianDiffusion:
                     clip_denoised=clip_denoised,
                     denoised_fn=denoised_fn,
                     model_kwargs=model_kwargs,
+                    rng=rng,
                 )
                 yield out
                 img = out["sample"]

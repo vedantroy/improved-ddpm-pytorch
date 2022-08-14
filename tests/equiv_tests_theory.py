@@ -11,6 +11,7 @@ from diffusion.diffusion import (
     for_timesteps,
 )
 
+
 def test_equivalence_simple():
     T = 1000
     betas = cosine_betas(T)
@@ -65,7 +66,6 @@ def test_equivalence():
         x_t = gd.q_sample(x_0=x_0, t=t_tensor, noise=eps)
         mean1 = gd.q_posterior_mean(x_0=x_0, x_t=x_t, t=t_tensor)
         t = lambda x: for_timesteps(x, t_tensor, x_t)
-
 
         sqrt_alphas = th.sqrt(t(gd.alphas))
         simplified = (1 / sqrt_alphas) * (

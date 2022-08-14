@@ -70,7 +70,9 @@ def simple_space_timesteps(num_timesteps, num_sample_steps):
         step = min(round(i * interval), num_timesteps - 1)
         steps.append(step)
 
-    assert steps[0] == 0 and steps[-1] == num_timesteps - 1, f"Invalid spacing (len={len(steps)}): {steps}"
+    assert (
+        steps[0] == 0 and steps[-1] == num_timesteps - 1
+    ), f"Invalid spacing (len={len(steps)}): {steps}"
     r = set(steps)
     assert len(r) == num_sample_steps, f"{len(r)} != {num_sample_steps}"
     return r
