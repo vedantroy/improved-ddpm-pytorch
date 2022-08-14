@@ -21,7 +21,7 @@ def xor(a, b):
 # are the betas indexed s.t betas[0] == represents the image before any diffusion process?
 # (this would make sense b/c if the 1st beta is 0, then there would be no variance)
 
-PMeanVar = namedtuple("PMeanVar", ["mean", "var", "log_var"])
+ModelValues = namedtuple("ModelValues", ["mean", "var", "log_var", "model_eps"])
 
 
 def cosine_betas(timesteps, s=0.008, max_beta=0.999):
@@ -93,15 +93,13 @@ class GaussianDiffusion(ABC):
         if f64_debug:
             self.alphas = alphas
         alphas_cumprod = th.cumprod(alphas, dim=0)
-        self.alphas_cumprod = alphas_cumprod
+        self.alphas_cumprod = f32(alphas_cumprod)
         check(self.alphas_cumprod)
 
         # TODO(verify): By prepending 1, the 1st beta is 0
         # This represents the initial image, which as a mean but no variance (since it's ground truth)
         alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value=1.0)
-
-        if f64_debug:
-            self.alphas_cumprod_prev = alphas_cumprod_prev
+        self.alphas_cumprod_prev = f32(alphas_cumprod_prev)
 
         def setup_q_posterior_mean():
             # (11 in [0])
@@ -220,7 +218,7 @@ class GaussianDiffusion(ABC):
             raise Exception("Not implemented")
 
     @abstractmethod
-    def p_mean_variance(self, *, model, x_t, t, true_t, threshold) -> PMeanVar:
+    def p_mean_variance(self, *, model, x_t, t, true_t, threshold) -> ModelValues:
         """
         Get the model's predicted mean and variance for the distribution
         that predicts x_{t-1}
@@ -258,7 +256,7 @@ class GaussianDiffusion(ABC):
     def vb_term(self, *, x_0, x_t, t, model):
         true_mean = self.q_posterior_mean(x_0=x_0, x_t=x_t, t=t)
         true_log_var = for_timesteps(self.posterior_log_variance_clipped, t, x_t)
-        pred_mean, _, pred_log_var = self.p_mean_variance(
+        pred_mean, _, pred_log_var, _ = self.p_mean_variance(
             model=model, x_t=x_t, t=t, threshold=None
         )
         kl = normal_kl(true_mean, true_log_var, pred_mean, pred_log_var)
@@ -349,7 +347,11 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
 
         pred_mean = self.q_posterior_mean(x_0=pred_x_0, x_t=x_t, t=t)
         pred_log_var = self.model_v_to_log_variance(model_v, t)
-        return PMeanVar(mean=pred_mean, var=None, log_var=pred_log_var)
+        # TODO: `model_eps` is for DDIM, but can you even use DDIM sampling with
+        # learned variance?
+        return ModelValues(
+            mean=pred_mean, var=None, log_var=pred_log_var, model_eps=model_eps
+        )
 
     def losses_training(self, *, model_output, noise, x_0, x_t, t):
         model_eps, _ = get_eps_and_var(model_output, C=x_t.shape[1])
@@ -376,7 +378,12 @@ class FixedSmallVarianceGaussianDiffusion(GaussianDiffusion):
         x_0_pred = self.threshold(x_0_pred, threshold)
 
         model_mean = self.q_posterior_mean(x_0=x_0_pred, x_t=x_t, t=t)
-        return PMeanVar(mean=model_mean, var=model_variance, log_var=model_log_variance)
+        return ModelValues(
+            mean=model_mean,
+            var=model_variance,
+            log_var=model_log_variance,
+            model_eps=model_output,
+        )
 
     def losses_training(self, *, model_output, noise):
         mse_loss = self.loss_mse(model_eps=model_output, noise=noise)

@@ -9,9 +9,7 @@ from diffusion.respace import (
     create_map_and_betas,
     space_timesteps,
 )
-from diffusion.sampler import (
-    DDPMSampler
-)
+from diffusion.sampler import DDIMSampler, DDPMSampler
 
 from iddpm import IDDPMConfig
 
@@ -26,7 +24,7 @@ def run(
     out_dir: Path = typer.Option(...),
     checkpoint: Path = typer.Option(...),
     samples: int = typer.Option(...),
-    sample_steps: int = typer.Option(default=-1),
+    sample_steps: str = typer.Option(default=""),
     save_final_only: bool = typer.Option(False),
 ):
     assert checkpoint.is_file(), f"Checkpoint file not found: {checkpoint}"
@@ -34,9 +32,10 @@ def run(
     config = IDDPMConfig.create(config, None, cli_args=False)
     iddpm = config.initialize_object()
 
-    if sample_steps == -1:
-        sample_steps = iddpm.diffusion.n_timesteps
-    spacing = space_timesteps(iddpm.diffusion.n_timesteps, [sample_steps])
+    if sample_steps == "":
+        sample_steps = [iddpm.diffusion.n_timesteps]
+    # space_timesteps takes a string or a list of ints
+    spacing = space_timesteps(iddpm.diffusion.n_timesteps, sample_steps)
 
     # We need the original betas to create the spaced betas
     timestep_map, betas = create_map_and_betas(iddpm.diffusion.betas, spacing)
@@ -54,6 +53,7 @@ def run(
     iddpm.eval()
 
     sampler = DDPMSampler(iddpm.diffusion)
+    # sampler = DDIMSampler(iddpm.diffusion, eta=1)
     total = iddpm.diffusion.n_timesteps
     for idx, img in enumerate(
         tqdm(
