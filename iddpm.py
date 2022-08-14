@@ -17,6 +17,19 @@ from diffusion.diffusion import (
 )
 
 
+def numel(m: th.nn.Module, only_trainable: bool = False):
+    """
+    Returns the total number of parameters used by `m` (only counting
+    shared parameters once); if `only_trainable` is True, then only
+    includes parameters with `requires_grad = True`
+    """
+    parameters = list(m.parameters())
+    if only_trainable:
+        parameters = [p for p in parameters if p.requires_grad]
+    unique = {p.data_ptr(): p for p in parameters}.values()
+    return sum(p.numel() for p in unique)
+
+
 @dataclass
 class UNetParams(hp.Hparams):
     in_channels: int = hp.required("# input channels")
@@ -31,7 +44,7 @@ class UNetParams(hp.Hparams):
     attention_heads: int = hp.required("# attention heads")
 
     def initialize_object(self):
-        return UNet(
+        unet = UNet(
             in_channels=self.in_channels,
             out_channels=self.out_channels,
             model_channels=self.model_channels,
@@ -40,6 +53,8 @@ class UNetParams(hp.Hparams):
             num_res_blocks=self.res_blocks,
             num_heads=self.attention_heads,
         )
+        print(f"# parameters: {numel(unet, only_trainable=True)}")
+        return unet
 
 
 @dataclass
@@ -59,19 +74,6 @@ class DiffusionParams(hp.Hparams):
         )
 
 
-def numel(m: th.nn.Module, only_trainable: bool = False):
-    """
-    Returns the total number of parameters used by `m` (only counting
-    shared parameters once); if `only_trainable` is True, then only
-    includes parameters with `requires_grad = True`
-    """
-    parameters = list(m.parameters())
-    if only_trainable:
-        parameters = [p for p in parameters if p.requires_grad]
-    unique = {p.data_ptr(): p for p in parameters}.values()
-    return sum(p.numel() for p in unique)
-
-
 @dataclass
 class IDDPMConfig(hp.Hparams):
     unet: UNetParams = hp.required("the UNet model")
@@ -82,7 +84,6 @@ class IDDPMConfig(hp.Hparams):
             self.unet.initialize_object(),
             self.diffusion.initialize_object(diffusion_kwargs),
         )
-        print(f"# parameters: {numel(unet, only_trainable=True)}")
         return IDDPM(unet, diffusion)
 
 
