@@ -14,7 +14,6 @@ from diffusion.diffusion import (
     GaussianDiffusion,
     LearnedVarianceGaussianDiffusion,
     cosine_betas,
-    get_eps_and_var,
 )
 
 
@@ -60,6 +59,19 @@ class DiffusionParams(hp.Hparams):
         )
 
 
+def numel(m: th.nn.Module, only_trainable: bool = False):
+    """
+    Returns the total number of parameters used by `m` (only counting
+    shared parameters once); if `only_trainable` is True, then only
+    includes parameters with `requires_grad = True`
+    """
+    parameters = list(m.parameters())
+    if only_trainable:
+        parameters = [p for p in parameters if p.requires_grad]
+    unique = {p.data_ptr(): p for p in parameters}.values()
+    return sum(p.numel() for p in unique)
+
+
 @dataclass
 class IDDPMConfig(hp.Hparams):
     unet: UNetParams = hp.required("the UNet model")
@@ -70,6 +82,7 @@ class IDDPMConfig(hp.Hparams):
             self.unet.initialize_object(),
             self.diffusion.initialize_object(diffusion_kwargs),
         )
+        print(f"# parameters: {numel(unet, only_trainable=True)}")
         return IDDPM(unet, diffusion)
 
 
