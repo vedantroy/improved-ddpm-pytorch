@@ -60,7 +60,7 @@ def test_equivalence():
     assert x_0.shape == eps.shape
 
     for timestep in range(0, T):
-        t_tensor = th.Tensor([timestep]).to(dtype=th.int64)  # 8 is random choice
+        t_tensor = th.Tensor([timestep]).to(dtype=th.int64)
         assert t_tensor.shape[0] == N
         x_t = gd.q_sample(x_0=x_0, t=t_tensor, noise=eps)
         mean1 = gd.q_posterior_mean(x_0=x_0, x_t=x_t, t=t_tensor)
