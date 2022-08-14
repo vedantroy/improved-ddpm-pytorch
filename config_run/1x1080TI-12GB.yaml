@@ -6,6 +6,7 @@ batch_rate: 2.34
 
 warmup_batches: 500
 lr: 1e-4
+cosine_factor: 1.2
 
 batch_size: 16
 micro_batches: 1
