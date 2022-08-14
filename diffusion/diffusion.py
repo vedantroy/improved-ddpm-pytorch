@@ -68,10 +68,6 @@ def for_timesteps(a, t, broadcast_to):
     return out.reshape(batch, *((1,) * num_nonbatch_dims))
 
 
-def f32(x):
-    return x.to(th.float32)
-
-
 def get_eps_and_var(model_output, *, C):
     model_eps, model_v = rearrange(
         model_output, "B (split C) ... -> split B C ...", split=2, C=C
@@ -80,7 +76,10 @@ def get_eps_and_var(model_output, *, C):
 
 
 class GaussianDiffusion(ABC):
-    def __init__(self, betas):
+    def __init__(self, betas, f64_debug=False):
+        def f32(x):
+            return x.to(th.float32) if not f64_debug else x
+
         # TODO: Get rid of this "check"?
         # It's never once caught a bug ...
         def check(x):
@@ -91,6 +90,8 @@ class GaussianDiffusion(ABC):
         check(self.betas)
 
         alphas = 1 - betas
+        if f64_debug:
+            self.alphas = alphas
         alphas_cumprod = th.cumprod(alphas, dim=0)
         self.alphas_cumprod = alphas_cumprod
         check(self.alphas_cumprod)
@@ -99,16 +100,19 @@ class GaussianDiffusion(ABC):
         # This represents the initial image, which as a mean but no variance (since it's ground truth)
         alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value=1.0)
 
+        if f64_debug:
+            self.alphas_cumprod_prev = alphas_cumprod_prev
+
         def setup_q_posterior_mean():
             # (11 in [0])
-            self.posterior_mean_coef_x_0 = f32(
-                (th.sqrt(alphas_cumprod_prev) * betas) / (1 - alphas_cumprod)
-            )
-            check(self.posterior_mean_coef_x_0)
             self.posterior_mean_coef_x_t = f32(
                 (th.sqrt(alphas) * (1 - alphas_cumprod_prev)) / (1 - alphas_cumprod)
             )
             check(self.posterior_mean_coef_x_t)
+            self.posterior_mean_coef_x_0 = f32(
+                (th.sqrt(alphas_cumprod_prev) * betas) / (1 - alphas_cumprod)
+            )
+            check(self.posterior_mean_coef_x_0)
 
         def setup_q_posterior_log_variance():
             # (10 in [0])
