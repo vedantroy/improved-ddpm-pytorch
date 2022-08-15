@@ -10,7 +10,6 @@ from diffusion.respace import (
     space_timesteps,
 )
 from diffusion.sampler import DDIMSampler, DDPMSampler
-
 from iddpm import IDDPMConfig
 
 
@@ -52,8 +51,8 @@ def run(
     iddpm = iddpm.to(device=device)
     iddpm.eval()
 
-    sampler = DDPMSampler(iddpm.diffusion)
-    # sampler = DDIMSampler(iddpm.diffusion, eta=1)
+    # sampler = DDPMSampler(iddpm.diffusion)
+    sampler = DDIMSampler(iddpm.diffusion, eta=0)
     total = iddpm.diffusion.n_timesteps
     for idx, img in enumerate(
         tqdm(
