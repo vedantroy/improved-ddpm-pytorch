@@ -38,7 +38,8 @@ def run(
 
     # We need the original betas to create the spaced betas
     timestep_map, betas = create_map_and_betas(iddpm.diffusion.betas, spacing)
-    iddpm.model = WrappedModel(iddpm.model, timestep_map)
+    # TODO: roast mosaic
+    # iddpm.model = WrappedModel(iddpm.model, timestep_map)
 
     iddpm = config.initialize_object(diffusion_kwargs=dict(betas=betas))
 
@@ -50,6 +51,7 @@ def run(
 
     iddpm = iddpm.to(device=device)
     iddpm.eval()
+    wrapped_model = WrappedModel(iddpm.model, timestep_map)
 
     # sampler = DDPMSampler(iddpm.diffusion)
     sampler = DDIMSampler(iddpm.diffusion, eta=0)
@@ -57,7 +59,7 @@ def run(
     for idx, img in enumerate(
         tqdm(
             sampler.sample_loop_progressive(
-                model=iddpm.model,
+                model=wrapped_model,
                 noise=None,
                 shape=(samples, 3, 64, 64),
                 threshold="static",

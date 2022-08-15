@@ -99,12 +99,13 @@ def create_map_and_betas(betas, use_timesteps):
     return map_generation_step_to_timestep, th.Tensor(new_betas).to(dtype=th.float64)
 
 
-class WrappedModel(nn.Module):
+class WrappedModel:
     def __init__(self, model, timestep_map):
         super().__init__()
         self.model = model
         self.timestep_map = th.Tensor(timestep_map).to(dtype=th.int)
 
-    def forward(self, x, ts):
+
+    def __call__(self, x, ts):
         new_ts = self.timestep_map[ts].to(device=ts.device, dtype=ts.dtype)
         return self.model(x, new_ts)
