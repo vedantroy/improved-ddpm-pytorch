@@ -1,5 +1,6 @@
 # Improved Denoised Diffusion Probabilistic Models
-This is my implementation of [Improved Denoising Diffusion Probabilistic Models](https://arxiv.org/abs/2102.09672) for learning purposes.
+This is my implementation of [Improved Denoising Diffusion Probabilistic Models](https://arxiv.org/abs/2102.09672).
+It also has an implementation of [Denoising Diffusion Implicit Models](https://arxiv.org/abs/2010.02502).
 
 ## Install
 Install the environment with conda, then:
@@ -39,12 +40,10 @@ Implemented:
 - [x] $L_\text{simple}$ objective
 - [x] Cosine schedule
 - [x] Training + Generating
-
-TODO:
-- [ ] $L_\text{hybrid}$ objective / learned variance
-    - There's a prototype, but I'm running into some issues
-- [ ] Faster sampling 
-    - Requires implementing $L_\text{hybrid}$
+- [x] $L_\text{hybrid}$ objective / learned variance
+  - TODO: Verify sample quality
+- [x] Faster sampling
+- [x] Sampling from DDIM
 
 Unplanned:
 - [ ] $L_\text{vlb}$ objective with loss-aware sampler
@@ -57,8 +56,6 @@ This repository is *super* messy. It has a lot of scratch files that represent m
     - I haven't written tests for sampling yet
 - [run_unet.py](./run_unet.py) prints out the architecture of the UNet in a friendly form & verifies the UNet works
 - [make_torchdata.py](./data_scripts/make_torchdata.py) contains a script to generate a dataset from a folder of image files. It outputs parquet files.
-
-Anyways, a ton of stuff here is not well-documented. E.g, you can't use "basic.yaml". It doesn't work since I haven't implemented learned variances yet. So, proceed with caution ...
 
 ## Why?
 This repository is for my personal use. But, there are a few nice things you might get from it:
