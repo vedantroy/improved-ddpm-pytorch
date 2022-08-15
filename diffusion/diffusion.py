@@ -258,7 +258,7 @@ class GaussianDiffusion(ABC):
     def vb_term(self, *, x_0, x_t, t, model):
         true_mean = self.q_posterior_mean(x_0=x_0, x_t=x_t, t=t)
         true_log_var = for_timesteps(self.posterior_log_variance_clipped, t, x_t)
-        pred_mean, _, pred_log_var, _ = self.p_mean_variance(
+        pred_mean, _, pred_log_var, _, _ = self.p_mean_variance(
             model=model, x_t=x_t, t=t, threshold=None
         )
         kl = normal_kl(true_mean, true_log_var, pred_mean, pred_log_var)
