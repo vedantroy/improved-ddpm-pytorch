@@ -343,6 +343,12 @@ class GaussianDiffusion:
             * x_t
         )
 
+
+    #def _predict_eps_from_xstart(self, x_t, t, pred_xstart):
+    #    return (
+    #        x_t  - _extract_into_tensor(self.sqrt_alphas_cumprod, t, x_t.shape) * pred_xstart
+    #    ) / _extract_into_tensor(np.sqrt((1 / self.alphas_cumprod) - 1), t, x_t.shape)
+
     def _predict_eps_from_xstart(self, x_t, t, pred_xstart):
         return (
             _extract_into_tensor(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t
@@ -486,12 +492,15 @@ class GaussianDiffusion:
         denoised_fn=None,
         model_kwargs=None,
         eta=0.0,
+        dbg=None
     ):
         """
         Sample x_{t-1} from the model using DDIM.
 
         Same usage as p_sample().
         """
+        in_test = dbg != None
+        dbg = {} if not in_test else dbg
         out = self.p_mean_variance(
             model,
             x,
@@ -503,13 +512,23 @@ class GaussianDiffusion:
         # Usually our model outputs epsilon, but we re-derive it
         # in case we used x_start or x_prev prediction.
         eps = self._predict_eps_from_xstart(x, t, out["pred_xstart"])
+        #if in_test:
+        #    # Something is going wrong in _predict_eps_from_xstart
+        #    # Probably my test is returning invalid values... idrk
+        #    eps = model()
+        #    dbg['eps'] = eps
+        dbg['eps'] = eps
         alpha_bar = _extract_into_tensor(self.alphas_cumprod, t, x.shape)
         alpha_bar_prev = _extract_into_tensor(self.alphas_cumprod_prev, t, x.shape)
+        dbg['alpha_bar'] = alpha_bar
+        dbg['alpha_bar_prev'] = alpha_bar_prev
         sigma = (
             eta
             * th.sqrt((1 - alpha_bar_prev) / (1 - alpha_bar))
             * th.sqrt(1 - alpha_bar / alpha_bar_prev)
         )
+        dbg['sigma'] = sigma
+        dbg['pred_xstart'] = out["pred_xstart"]
         # Equation 12.
         noise = th.randn_like(x)
         mean_pred = (

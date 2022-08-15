@@ -21,7 +21,9 @@ def xor(a, b):
 # are the betas indexed s.t betas[0] == represents the image before any diffusion process?
 # (this would make sense b/c if the 1st beta is 0, then there would be no variance)
 
-ModelValues = namedtuple("ModelValues", ["mean", "var", "log_var", "model_eps"])
+ModelValues = namedtuple(
+    "ModelValues", ["mean", "var", "log_var", "pred_x_0", "model_eps"]
+)
 
 
 def cosine_betas(timesteps, s=0.008, max_beta=0.999):
@@ -347,10 +349,14 @@ class LearnedVarianceGaussianDiffusion(GaussianDiffusion):
 
         pred_mean = self.q_posterior_mean(x_0=pred_x_0, x_t=x_t, t=t)
         pred_log_var = self.model_v_to_log_variance(model_v, t)
-        # TODO: `model_eps` is for DDIM, but can you even use DDIM sampling with
-        # learned variance?
         return ModelValues(
-            mean=pred_mean, var=None, log_var=pred_log_var, model_eps=model_eps
+            mean=pred_mean,
+            var=None,
+            log_var=pred_log_var,
+            # These are only for DDIM sampling, but I'm not
+            # sure if you can use DDIM with learned variance
+            pred_x_0=pred_x_0,
+            model_eps=model_eps,
         )
 
     def losses_training(self, *, model_output, noise, x_0, x_t, t):
@@ -374,14 +380,15 @@ class FixedSmallVarianceGaussianDiffusion(GaussianDiffusion):
         )
 
         model_output = model(x_t, t)
-        x_0_pred = self.predict_x0_from_eps(x_t=x_t, t=t, eps=model_output)
-        x_0_pred = self.threshold(x_0_pred, threshold)
+        pred_x_0 = self.predict_x0_from_eps(x_t=x_t, t=t, eps=model_output)
+        pred_x_0 = self.threshold(pred_x_0, threshold)
 
-        model_mean = self.q_posterior_mean(x_0=x_0_pred, x_t=x_t, t=t)
+        model_mean = self.q_posterior_mean(x_0=pred_x_0, x_t=x_t, t=t)
         return ModelValues(
             mean=model_mean,
             var=model_variance,
             log_var=model_log_variance,
+            pred_x_0=pred_x_0,
             model_eps=model_output,
         )
 

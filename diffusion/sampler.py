@@ -56,25 +56,34 @@ class DDPMSampler(Sampler):
         return sample
 
 
+# `sample` is split into small functions for unit testing
 class DDIMSampler(Sampler):
     def __init__(self, diffusion: GaussianDiffusion, eta: float):
         super().__init__(diffusion)
         self.eta = eta
 
-    def sample(self, *, model_out, x_t, t, idx):
+    def alphas(self, *, x_t, t):
         alpha_bar = for_timesteps(self.diffusion.alphas_cumprod, t, x_t)
         alpha_bar_prev = for_timesteps(self.diffusion.alphas_cumprod_prev, t, x_t)
+        return alpha_bar, alpha_bar_prev
 
-        # I think we don't use beta directly here b/c it's a float64
+    def sigma(self, *, alpha_bar, alpha_bar_prev):
+        # I think we don't use beta (or alpha) directly here b/c it's a float64
         # and truncating would be more imprecise ??
+        # TODO: This could just be an artifact of the OpenAI implementation, check w/ them
         beta = alpha_bar / alpha_bar_prev
         sigma = (
             self.eta * th.sqrt((1 - alpha_bar_prev) / (1 - alpha_bar)) * th.sqrt(1 - beta)
         )
+        return sigma
+
+    def sample(self, *, model_out, x_t, t, idx):
+        alpha_bar, alpha_bar_prev = self.alphas(x_t=x_t, t=t)
+        sigma = self.sigma(alpha_bar=alpha_bar, alpha_bar_prev=alpha_bar_prev)
 
         # (12 in [1])
         mean_pred = (
-            model_out.mean * th.sqrt(alpha_bar_prev)
+            model_out.pred_x_0 * th.sqrt(alpha_bar_prev)
             + th.sqrt(1 - alpha_bar_prev - sigma**2) * model_out.model_eps
         )
 
